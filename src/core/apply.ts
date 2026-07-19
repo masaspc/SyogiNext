@@ -1,7 +1,7 @@
 import type { GameState, Move, Owner, Piece } from './types';
 import { ADJ, findRoyals } from './board';
 import { def, effectiveDef } from './defs';
-import { captureAllowed, isRoyalPiece, pieceMoves } from './movegen';
+import { captureAllowed, isImmobilized, isRoyalPiece, pieceMoves } from './movegen';
 import { pick } from './rng';
 import { inCamp } from './board';
 import { colOf, onBoard, rowOf, sqOf } from './types';
@@ -249,6 +249,7 @@ function resolveAutomaticActions(s: GameState, mover: Owner): void {
   for (const actor of actors) {
     const current = s.board[actor.sq];
     if (!current || current.id !== actor.id || current.owner !== mover) continue;
+    if (isImmobilized(s, actor.sq, current)) continue;
     const auto = effectiveDef(current).auto;
     if (!auto) continue;
     const p: Piece = { ...current, autoCount: (current.autoCount ?? 0) + 1 };

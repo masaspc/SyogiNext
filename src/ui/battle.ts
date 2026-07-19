@@ -1,7 +1,7 @@
 import { findBestMove } from '../ai/search';
 import { applyMove } from '../core/apply';
 import { findRoyals } from '../core/board';
-import { def } from '../core/defs';
+import { def, effectiveDef } from '../core/defs';
 import { isAttacked, legalMoves, pieceMoves } from '../core/movegen';
 import { stageDef } from '../core/stages';
 import type { GameEvent, GameState, Move, Owner, RunState } from '../core/types';
@@ -250,7 +250,7 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
     if (selectedSq !== null) {
       const selectedPiece = game().board[selectedSq];
       if (selectedPiece) {
-        const d = def(selectedPiece.defId);
+        const d = effectiveDef(selectedPiece);
         const inspecting = selectedPiece.owner === 'enemy';
         side.innerHTML = `<p class="eyebrow">${inspecting ? 'ENEMY INFO' : 'SELECTED'}</p><h3>${d.name}</h3><p>${d.desc ?? ''}</p>`;
         side.prepend(moveDiagram(d, selectedPiece.owner));

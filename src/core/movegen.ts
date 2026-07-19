@@ -14,6 +14,16 @@ export function isRoyalPiece(p: Piece): boolean {
   return !!effectiveDef(p).isRoyal;
 }
 
+export function isImmobilized(state: GameState, sq: number, piece: Piece | null = state.board[sq]): boolean {
+  if (!piece) return false;
+  if (state.petrified[piece.id]) return true;
+  if (isRoyalPiece(piece)) return false;
+  return ADJ[sq].some((a) => {
+    const neighbor = state.board[a];
+    return neighbor && neighbor.owner !== piece.owner && effectiveDef(neighbor).paralysisAura;
+  });
+}
+
 // 捕獲可否(§7.1): ロイヤルは常に取れる。非ロイヤルは blockCapture とオーラ(軍神/覇王)で保護され得る
 export function captureAllowed(state: GameState, attacker: Piece, from: number, to: number, isJump: boolean): boolean {
   const target = state.board[to];
@@ -238,12 +248,8 @@ function genActive(state: GameState, sq: number, p: Piece, d: PieceDef, moves: M
 export function pieceMoves(state: GameState, sq: number): Move[] {
   const p = state.board[sq];
   if (!p || state.winner) return [];
-  if (state.petrified[p.id]) return []; // 石化中(§7.10)
+  if (isImmobilized(state, sq, p)) return []; // 石化・麻痺中(§7.10, §7.16)
   const d = effectiveDef(p);
-  if (!d.isRoyal && ADJ[sq].some((a) => {
-    const neighbor = state.board[a];
-    return neighbor && neighbor.owner !== p.owner && effectiveDef(neighbor).paralysisAura;
-  })) return [];
   const moves: Move[] = [];
   if (d.moves.some((m) => m.type === 'lion')) {
     genLion(state, sq, p, moves);

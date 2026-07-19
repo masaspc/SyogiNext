@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyMove } from '../src/core/apply';
-import { legalMoves, pieceMoves } from '../src/core/movegen';
+import { isAttacked, legalMoves, pieceMoves } from '../src/core/movegen';
 import { sqOf, type GameState, type Move } from '../src/core/types';
 import { bare, put, tos } from './helpers';
 
@@ -24,8 +24,20 @@ describe('天上レア', () => {
     put(s, sqOf(5, 5), 'king', 'enemy');
     put(s, sqOf(6, 4), 'silver', 'enemy');
     expect(pieceMoves(s, sqOf(4, 5))).toEqual([]);
+    expect(isAttacked(s, sqOf(5, 5), 'enemy')).toBe(false);
     expect(pieceMoves(s, sqOf(5, 5)).length).toBeGreaterThan(0);
     expect(pieceMoves(s, sqOf(6, 4)).length).toBeGreaterThan(0);
+  });
+
+  it('天照: 麻痺中は敵の自動行動カウントも進めない', () => {
+    const s = bare();
+    const autoSq = sqOf(4, 5);
+    put(s, sqOf(4, 4), 'amaterasu', 'player');
+    put(s, autoSq, 'chibosin', 'enemy');
+    s.turn = 'enemy';
+    const s2 = applyMove(s, { kind: 'pass' });
+    expect(s2.board[autoSq]?.autoCount).toBeUndefined();
+    expect(s2.board.some((piece) => piece?.defId === 'pawn')).toBe(false);
   });
 
   it('須佐之男: 十拳剣で5×5内の敵非ロイヤルだけを消滅させる', () => {
@@ -61,6 +73,8 @@ describe('天上レア', () => {
     expect(s.board.some((piece) => piece?.defId === 'bishop' && !piece.promoted)).toBe(true);
     expect(s.board.some((piece) => piece?.defId === 'rook')).toBe(true);
     expect(s.board.some((piece) => piece?.defId === 'bishop' && piece.promoted)).toBe(true);
+    s = nextPlayerTurn(s);
+    expect(s.board.filter((piece) => piece?.defId === 'silver')).toHaveLength(2);
   });
 
   it('八岐大蛇: 守護を通し、守られていない隣接敵だけを捕食する', () => {
@@ -73,6 +87,14 @@ describe('天上レア', () => {
     expect(s2.board[sqOf(4, 5)]?.defId).toBe('pawn');
     expect(s2.board[sqOf(5, 4)]).toBeNull();
     expect(s2.hands.player.silver).toBeUndefined();
+  });
+
+  it('八岐大蛇: 捕食対象がなくても自動行動カウントは進む', () => {
+    const s = bare();
+    put(s, sqOf(4, 4), 'orochi', 'player');
+    const s2 = applyMove(s, { kind: 'pass' });
+    expect(s2.board[sqOf(4, 4)]?.autoCount).toBe(1);
+    expect(s2.events.some((event) => event.t === 'devour')).toBe(false);
   });
 
   it('禍津神: 2手番ごとに敵の通常駒だけを成り状態ごと寝返らせる', () => {
@@ -92,11 +114,18 @@ describe('天上レア', () => {
     const target = sqOf(0, 0);
     put(s, from, 'enma', 'player');
     put(s, target, 'phoenix_b', 'enemy');
+    put(s, sqOf(0, 2), 'gold', 'enemy');
+    put(s, sqOf(0, 3), 'silver', 'enemy');
     put(s, sqOf(0, 1), 'king', 'enemy');
-    const s2 = applyMove(s, activeAt(s, from, 'execute', target));
+    let s2 = applyMove(s, activeAt(s, from, 'execute', target));
     expect(s2.board[target]).toBeNull();
+    s2.turn = 'player';
+    s2 = applyMove(s2, activeAt(s2, from, 'execute', sqOf(0, 2)));
+    s2.turn = 'player';
+    s2 = applyMove(s2, activeAt(s2, from, 'execute', sqOf(0, 3)));
     expect(s2.board[sqOf(0, 1)]?.defId).toBe('king');
-    expect(s2.board[from]?.usesLeft).toBe(2);
+    expect(s2.board[from]?.usesLeft).toBe(0);
+    expect(pieceMoves(s2, from).some((move) => move.kind === 'active')).toBe(false);
     expect(s2.board.some((piece) => piece?.defId === 'phoenix_b')).toBe(false);
   });
 

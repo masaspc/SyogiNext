@@ -22,7 +22,7 @@ describe('追加神話レア', () => {
     const from = sqOf(7, 4);
     put(s, from, 'raijin', 'player');
     put(s, sqOf(2, 2), 'pawn', 'enemy');
-    put(s, sqOf(5, 2), 'phoenix_b', 'enemy');
+    put(s, sqOf(5, 2), 'fox', 'enemy');
     put(s, sqOf(0, 2), 'king', 'enemy');
     put(s, sqOf(5, 3), 'gold', 'enemy');
 
@@ -31,7 +31,8 @@ describe('追加神話レア', () => {
     expect(s2.board[sqOf(5, 2)]).toBeNull();
     expect(s2.board[sqOf(0, 2)]?.defId).toBe('king');
     expect(s2.board[sqOf(5, 3)]?.defId).toBe('gold');
-    expect(s2.board.some((piece) => piece?.defId === 'phoenix_b')).toBe(false);
+    expect(s2.hands.enemy.pawn).toBeUndefined();
+    expect(s2.board[from]?.usesLeft).toBe(0);
   });
 
   it('風神: 選んだ段の後退可能な敵駒をロイヤルも含めて押し戻す', () => {
@@ -56,6 +57,18 @@ describe('追加神話レア', () => {
     const pawn = s2.board.findIndex((piece) => piece?.defId === 'pawn' && piece.owner === 'player');
     expect(pawn).toBeGreaterThanOrEqual(0);
     expect(s2.events.some((event) => event.t === 'spawn' && event.defId === 'pawn')).toBe(true);
+  });
+
+  it('地母神: 周囲に空きがなくても自動行動カウントは進む', () => {
+    const s = bare();
+    const from = sqOf(4, 4);
+    put(s, from, 'chibosin', 'player');
+    for (let row = 3; row <= 5; row++) for (let col = 3; col <= 5; col++) {
+      if (sqOf(row, col) !== from) put(s, sqOf(row, col), 'gold', 'player');
+    }
+    const s2 = applyMove(s, { kind: 'pass' });
+    expect(s2.board[from]?.autoCount).toBe(1);
+    expect(s2.board.filter((piece) => piece?.defId === 'pawn')).toHaveLength(0);
   });
 
   it('鍛冶神: 2手番ごとに金、銀の順で生成する', () => {
@@ -88,6 +101,18 @@ describe('追加神話レア', () => {
     expect(s2.board[sqOf(3, 5)]?.defId).toBe('gold');
   });
 
+  it('死神: 怨念を取って道連れになった場合は周囲消滅を発動しない', () => {
+    const s = bare();
+    const from = sqOf(4, 4);
+    const to = sqOf(3, 3);
+    put(s, from, 'shinigami', 'player');
+    put(s, to, 'grudge', 'enemy');
+    put(s, sqOf(3, 4), 'pawn', 'enemy');
+    const s2 = applyMove(s, { kind: 'move', from, to, promote: false });
+    expect(s2.board[to]).toBeNull();
+    expect(s2.board[sqOf(3, 4)]?.defId).toBe('pawn');
+  });
+
   it('時の巫女: 敵の全非ロイヤルを次の敵手番だけ停止させる', () => {
     const s = bare();
     const from = sqOf(6, 4);
@@ -102,6 +127,18 @@ describe('追加神話レア', () => {
     expect(s3.petrified[pawn.id]).toBeUndefined();
   });
 
+  it('時の巫女: 刻停中は敵の自動行動カウントも進めない', () => {
+    const s = bare();
+    const from = sqOf(6, 4);
+    const autoSq = sqOf(2, 4);
+    put(s, from, 'tokinomiko', 'player');
+    put(s, autoSq, 'chibosin', 'enemy');
+    const stopped = applyMove(s, activeAt(s, from, 'timestop'));
+    const afterEnemyPass = applyMove(stopped, { kind: 'pass' });
+    expect(afterEnemyPass.board[autoSq]?.autoCount).toBeUndefined();
+    expect(afterEnemyPass.board.some((piece) => piece?.defId === 'pawn')).toBe(false);
+  });
+
   it('残影: 通常移動の最初の移動元へ歩を残す', () => {
     const s = bare();
     const from = sqOf(5, 4);
@@ -110,6 +147,16 @@ describe('追加神話レア', () => {
     const s2 = applyMove(s, { kind: 'move', from, to, promote: false });
     expect(s2.board[to]?.defId).toBe('zanei');
     expect(s2.board[from]).toMatchObject({ defId: 'pawn', owner: 'player' });
+  });
+
+  it('残影: アクティブ移動では移動元へ歩を残さない', () => {
+    const s = bare();
+    const from = sqOf(7, 4);
+    const to = sqOf(8, 3);
+    put(s, from, 'zanei', 'player', { usesLeft: 1 });
+    const s2 = applyMove(s, { kind: 'active', from, ability: 'warp', target: to });
+    expect(s2.board[to]?.defId).toBe('zanei');
+    expect(s2.board[from]).toBeNull();
   });
 
   it('分身武者: 2手番ごとに複製し、新しい分身は次のフェーズから数える', () => {
@@ -121,5 +168,7 @@ describe('追加神話レア', () => {
     expect(copies).toHaveLength(2);
     expect(copies.find((piece) => piece?.id === original.id)?.autoCount).toBe(2);
     expect(copies.find((piece) => piece?.id !== original.id)?.autoCount).toBe(0);
+    s = nextPlayerTurn(nextPlayerTurn(s));
+    expect(s.board.filter((piece) => piece?.defId === 'bunshin').length).toBeGreaterThanOrEqual(4);
   });
 });
