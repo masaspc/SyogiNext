@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { def } from '../src/core/defs';
-import { newRun, onBattleEnd, setFormation, startBattle, takeReward } from '../src/core/run';
+import { newRun, onBattleEnd, rewardWeightsFor, setFormation, startBattle, takeReward } from '../src/core/run';
 import { enemySetupFor, STAGES } from '../src/core/stages';
 import { sqOf } from '../src/core/types';
 
@@ -22,16 +22,19 @@ describe('ステージデータ', () => {
     expect(enemySetupFor(5)[sqOf(0, 4)]).toBe('onimusha');
     expect(enemySetupFor(10)[sqOf(0, 4)]).toBe('kyubi');
     expect(enemySetupFor(15)[sqOf(0, 4)]).toBe('haoh');
+    expect(STAGES[12].enemySpecials).toContain('shinigami');
+    expect(STAGES[13].enemySpecials).toContain('raijin');
+    expect(STAGES[14].enemySpecials).toContain('amaterasu');
   });
 });
 
 describe('ラン進行', () => {
-  it('初心者モードはレア以上1枚を獲得・編成済みで開始する', () => {
+  it('初心者モードは神話レアと天上レアを1枚ずつ獲得・編成済みで開始する', () => {
     for (let seed = 1; seed <= 20; seed++) {
       const run = newRun('beginner', seed);
-      expect(run.roster).toHaveLength(1);
-      expect(['rare', 'mythic']).toContain(def(run.roster[0]).rarity);
-      expect(Object.values(run.formation)).toEqual(run.roster);
+      expect(run.roster).toHaveLength(2);
+      expect(run.roster.map((id) => def(id).rarity).sort()).toEqual(['celestial', 'mythic']);
+      expect(Object.values(run.formation).sort()).toEqual([...run.roster].sort());
     }
   });
 
@@ -42,15 +45,23 @@ describe('ラン進行', () => {
     expect(battle.game?.bossDodgesLeft).toBe(0);
   });
 
-  it('面1報酬には神話レアが出ず、面5報酬はレア以上のみで3枚が異なる', () => {
+  it('報酬はコモンをほぼ除外し、進行するほど神話・天上レアが出やすい', () => {
+    for (let stage = 1; stage <= 14; stage++) {
+      const weights = rewardWeightsFor(stage);
+      expect(Object.values(weights).reduce((sum, value) => sum + value, 0)).toBe(100);
+      expect(weights.common).toBeLessThanOrEqual(1);
+    }
+    expect(rewardWeightsFor(1).mythic + rewardWeightsFor(1).celestial).toBe(40);
+    expect(rewardWeightsFor(14).mythic + rewardWeightsFor(14).celestial).toBe(80);
+  });
+
+  it('報酬候補は常に重複しない3枚になる', () => {
     for (let seed = 1; seed <= 40; seed++) {
       const stage1 = onBattleEnd(startBattle(newRun('normal', seed)), 'player');
       expect(stage1.rewardOffer).toHaveLength(3);
-      expect(stage1.rewardOffer?.every((id) => def(id).rarity !== 'mythic')).toBe(true);
-
-      const stage5 = onBattleEnd(startBattle({ ...newRun('normal', seed), stage: 5 }), 'player');
-      expect(stage5.rewardOffer?.every((id) => ['rare', 'mythic'].includes(def(id).rarity!))).toBe(true);
-      expect(new Set(stage5.rewardOffer).size).toBe(3);
+      expect(new Set(stage1.rewardOffer).size).toBe(3);
+      const stage14 = onBattleEnd(startBattle({ ...newRun('normal', seed), stage: 14 }), 'player');
+      expect(new Set(stage14.rewardOffer).size).toBe(3);
     }
   });
 

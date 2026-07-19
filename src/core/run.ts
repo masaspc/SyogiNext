@@ -8,13 +8,13 @@ import { sqOf } from './types';
 type RewardWeights = Record<Rarity, number>;
 
 const REWARD_WEIGHTS: { from: number; to: number; weights: RewardWeights }[] = [
-  { from: 1, to: 3, weights: { common: 70, uncommon: 25, rare: 5, mythic: 0, celestial: 0 } },
-  { from: 4, to: 4, weights: { common: 50, uncommon: 35, rare: 13, mythic: 2, celestial: 0 } },
-  { from: 5, to: 5, weights: { common: 0, uncommon: 0, rare: 80, mythic: 20, celestial: 0 } },
-  { from: 6, to: 9, weights: { common: 35, uncommon: 35, rare: 23, mythic: 7, celestial: 0 } },
-  { from: 10, to: 10, weights: { common: 0, uncommon: 0, rare: 70, mythic: 30, celestial: 0 } },
-  { from: 11, to: 12, weights: { common: 20, uncommon: 35, rare: 33, mythic: 12, celestial: 0 } },
-  { from: 13, to: 14, weights: { common: 10, uncommon: 30, rare: 40, mythic: 20, celestial: 0 } },
+  { from: 1, to: 3, weights: { common: 1, uncommon: 14, rare: 45, mythic: 35, celestial: 5 } },
+  { from: 4, to: 4, weights: { common: 1, uncommon: 9, rare: 40, mythic: 40, celestial: 10 } },
+  { from: 5, to: 5, weights: { common: 0, uncommon: 0, rare: 30, mythic: 50, celestial: 20 } },
+  { from: 6, to: 9, weights: { common: 1, uncommon: 7, rare: 32, mythic: 45, celestial: 15 } },
+  { from: 10, to: 10, weights: { common: 0, uncommon: 0, rare: 20, mythic: 50, celestial: 30 } },
+  { from: 11, to: 12, weights: { common: 1, uncommon: 4, rare: 25, mythic: 45, celestial: 25 } },
+  { from: 13, to: 14, weights: { common: 0, uncommon: 3, rare: 17, mythic: 45, celestial: 35 } },
 ];
 
 const OBTAINABLE_BY_RARITY: Record<Rarity, string[]> = {
@@ -33,13 +33,18 @@ function drawRarity(state: number, weights: RewardWeights): { value: Rarity; sta
   return { value: 'celestial', state: r.state };
 }
 
-function rewardOffer(stage: number, initialState: number): { offer: string[]; state: number } {
-  const row = REWARD_WEIGHTS.find((x) => stage >= x.from && stage <= x.to);
+export function rewardWeightsFor(stage: number): RewardWeights {
+  const row = REWARD_WEIGHTS.find((entry) => stage >= entry.from && stage <= entry.to);
   if (!row) throw new Error(`no reward table for stage ${stage}`);
+  return { ...row.weights };
+}
+
+function rewardOffer(stage: number, initialState: number): { offer: string[]; state: number } {
+  const weights = rewardWeightsFor(stage);
   let state = initialState;
   const offer: string[] = [];
   while (offer.length < 3) {
-    const rarity = drawRarity(state, row.weights);
+    const rarity = drawRarity(state, weights);
     state = rarity.state;
     const candidates = OBTAINABLE_BY_RARITY[rarity.value].filter((id) => !offer.includes(id));
     if (!candidates.length) continue;
@@ -62,16 +67,16 @@ export function newRun(mode: 'normal' | 'beginner', seed: number): RunState {
     rngState: seed,
   };
   if (mode === 'beginner') {
-    const rarityRoll = nextRand(run.rngState);
-    run.rngState = rarityRoll.state;
-    const rarity: Rarity = rarityRoll.value < 0.7 ? 'rare' : 'mythic';
-    const pieceRoll = pick(run.rngState, OBTAINABLE_BY_RARITY[rarity]);
-    run.rngState = pieceRoll.state;
-    run.roster.push(pieceRoll.value);
-    const slots = [sqOf(8, 3), sqOf(8, 5), sqOf(7, 1), sqOf(7, 7)];
-    const slotRoll = pick(run.rngState, slots);
-    run.rngState = slotRoll.state;
-    run.formation[slotRoll.value] = pieceRoll.value;
+    const openSlots = [sqOf(8, 3), sqOf(8, 5), sqOf(7, 1), sqOf(7, 7)];
+    for (const rarity of ['mythic', 'celestial'] as const) {
+      const pieceRoll = pick(run.rngState, OBTAINABLE_BY_RARITY[rarity]);
+      run.rngState = pieceRoll.state;
+      run.roster.push(pieceRoll.value);
+      const slotRoll = pick(run.rngState, openSlots);
+      run.rngState = slotRoll.state;
+      run.formation[slotRoll.value] = pieceRoll.value;
+      openSlots.splice(openSlots.indexOf(slotRoll.value), 1);
+    }
   }
   return run;
 }

@@ -22,9 +22,9 @@ export const STAGES: StageDef[] = [
   { stage: 10, depth: 4, timeMs: 2000, boss: 'kyubi', enemySpecials: ['leopard', 'shieldman', 'knight8', 'fox'] },
   { stage: 11, depth: 4, timeMs: 2000, enemySpecials: ['elephant', 'magnet', 'windmill', 'ninja', 'spearman'] },
   { stage: 12, depth: 4, timeMs: 2000, enemySpecials: ['kirin', 'sniper', 'witch', 'knight8', 'shieldman'] },
-  { stage: 13, depth: 4, timeMs: 2000, enemySpecials: ['phoenix', 'assassin', 'bomber', 'leopard', 'grudge', 'fox'] },
-  { stage: 14, depth: 5, timeMs: 3000, enemySpecials: ['lion', 'magnet', 'sniper', 'assassin', 'windmill', 'knight8'] },
-  { stage: 15, depth: 5, timeMs: 3000, boss: 'haoh', enemySpecials: ['gunshin', 'phoenix_b', 'kirin', 'phoenix', 'assassin'] },
+  { stage: 13, depth: 4, timeMs: 2000, enemySpecials: ['phoenix', 'assassin', 'bomber', 'shinigami', 'leopard', 'grudge', 'fox'] },
+  { stage: 14, depth: 5, timeMs: 3000, enemySpecials: ['lion', 'magnet', 'sniper', 'assassin', 'raijin', 'windmill', 'knight8'] },
+  { stage: 15, depth: 5, timeMs: 3000, boss: 'haoh', enemySpecials: ['gunshin', 'phoenix_b', 'kirin', 'phoenix', 'assassin', 'amaterasu'] },
 ];
 
 // 敵側の初期配置を、中央寄りから左右へ固定順で差し替える。
