@@ -55,7 +55,20 @@ const UNCOMMONS: PieceDef[] = [
   { id: 'kagemusha', name: '影武者', kanji: '影', rarity: 'uncommon', aiValue: 600, moves: [{ type: 'step', dirs: ALL8 }], active: { kind: 'kingSwap', uses: 1 }, desc: '玉と同じく8方向に1マス動ける。1ゲーム1回、味方の王と位置を入れ替えられる。' },
 ];
 
-export const SPECIAL_DEFS: PieceDef[] = [...COMMONS, ...UNCOMMONS];
+// ===== レア(§6.3) =====
+const RARES: PieceDef[] = [
+  { id: 'elephant', name: '酔象', kanji: '象', rarity: 'rare', aiValue: 850, moves: [{ type: 'step', dirs: [F, FL, FR, L, R, BL, BR] }], promotesTo: 'crownprince', desc: '真後ろ以外の7方向に1マス動ける。成ると太子(第二の王)になる。' },
+  { id: 'crownprince', name: '太子', kanji: '太', aiValue: 100000, isRoyal: true, moves: [{ type: 'step', dirs: ALL8 }], demotesTo: 'elephant', desc: '8方向に1マス動ける。王が取られても太子がいれば敗北しない。' },
+  { id: 'kirin', name: '麒麟', kanji: '麒', rarity: 'rare', aiValue: 900, moves: [{ type: 'jump', offsets: [[-2, 0], [2, 0], [0, -2], [0, 2]] }, { type: 'step', dirs: DIAG }], promotesTo: 'lion', desc: '縦横に2マス跳び、斜めに1マス動ける。成ると獅子になる。' },
+  { id: 'phoenix', name: '鳳凰', kanji: '鳳', rarity: 'rare', aiValue: 900, moves: [{ type: 'jump', offsets: [[-2, -2], [-2, 2], [2, -2], [2, 2]] }, { type: 'step', dirs: ORTH }], promotesTo: 'honno', desc: '斜めに2マス跳び、縦横に1マス動ける。成ると奔王になる。' },
+  { id: 'bomber', name: '爆弾兵', kanji: '爆', rarity: 'rare', aiValue: 800, moves: [{ type: 'step', dirs: ORTH }], onCapturedEffects: 'bomb', desc: '縦横に1マス動ける。取られたとき、取った駒と周囲8マスの全駒を消滅させる(王・ボスを除く。敵味方無差別)。' },
+  { id: 'magnet', name: '磁将', kanji: '磁', rarity: 'rare', aiValue: 850, moves: [{ type: 'step', dirs: ALL8 }], afterMoveChoice: 'magnetPull', desc: '8方向に1マス動ける。移動後、縦横直線上の最寄りの敵駒を1マス引き寄せられる。' },
+  { id: 'sniper', name: '狙撃手', kanji: '狙', rarity: 'rare', aiValue: 880, moves: [{ type: 'step', dirs: DIAG }], active: { kind: 'snipe', uses: 2 }, desc: '斜めに1マス動ける。1ゲーム2回、前方直線3マス以内の敵駒を狙撃して消滅させられる(王不可・間に駒があると不可)。' },
+  { id: 'assassin', name: '影の刺客', kanji: '刺', rarity: 'rare', aiValue: 950, moves: [{ type: 'slide', dirs: DIAG }], chainOnCapture: true, desc: '角と同じく斜めに何マスでも動ける。敵駒を取ったとき、続けてもう1回だけ移動できる。' },
+  { id: 'witch', name: '石化の魔女', kanji: '魔', rarity: 'rare', aiValue: 900, moves: [{ type: 'slide', dirs: DIAG, max: 2 }], afterMoveChoice: 'petrify', desc: '斜めに2マスまで動ける。移動後、隣接する敵駒1体を相手の次の手番の間、行動不能にできる。' },
+];
+
+export const SPECIAL_DEFS: PieceDef[] = [...COMMONS, ...UNCOMMONS, ...RARES];
 
 // UI用: プレイヤーが獲得できる駒(成り形は除く)
 export function obtainableIds(): string[] {
