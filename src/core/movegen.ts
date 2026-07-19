@@ -194,13 +194,22 @@ function pushMoveVariants(state: GameState, moves: Move[], p: Piece, d: PieceDef
     for (const allySq of ADJ[to]) {
       const ally = after.board[allySq];
       if (!ally || ally.owner !== p.owner || isRoyalPiece(ally) || isImmobilized(after, allySq, ally)) continue;
-      const destinations = new Set(destsBasic(after, allySq, ally, effectiveDef(ally))
+      const allyDef = effectiveDef(ally);
+      const basicDestinations = destsBasic(after, allySq, ally, allyDef)
         .filter(({ to: target, isJump }) => {
           const occupant = after.board[target];
           return Math.max(Math.abs(rowOf(target) - rowOf(allySq)), Math.abs(colOf(target) - colOf(allySq))) === 1
             && (!occupant || captureAllowed(after, ally, allySq, target, isJump));
         })
-        .map(({ to: target }) => target));
+        .map(({ to: target }) => target);
+      const lionDestinations = allyDef.moves.some((pattern) => pattern.type === 'lion')
+        ? ADJ[allySq].filter((target) => {
+          const occupant = after.board[target];
+          return (!occupant || occupant.owner !== ally.owner)
+            && (!occupant || captureAllowed(after, ally, allySq, target, false));
+        })
+        : [];
+      const destinations = new Set([...basicDestinations, ...lionDestinations]);
       for (const escortTo of destinations) moves.push({ ...baseMove, escort: { from: allySq, to: escortTo } });
     }
   } else {

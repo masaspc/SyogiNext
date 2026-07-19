@@ -50,6 +50,17 @@ describe('storage', () => {
     expect(loadCodex(storage)).toEqual(['lion', 'magnet', 'witch']);
   });
 
+  it('超越駒の玉座カウントと習得済みの動きを保存・復元する', () => {
+    const storage = new MemoryStorage();
+    const run = startBattle(newRun('normal', 11));
+    const piece = run.game!.board.find((current) => current?.owner === 'player')!;
+    piece.throneCount = 2;
+    piece.absorbed = ['knight', 'bishop'];
+    saveRun(run, storage);
+    const restored = loadRun(storage)!.game!.board.find((current) => current?.id === piece.id)!;
+    expect(restored).toMatchObject({ throneCount: 2, absorbed: ['knight', 'bishop'] });
+  });
+
   it('戦績を累積する', () => {
     const storage = new MemoryStorage();
     recordResult('normal', 4, false, storage);

@@ -251,6 +251,11 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
           (m): m is Extract<Move, { kind: 'drop' }> => m.kind === 'drop' && m.defId === selectedDrop && m.to === sq,
         );
         if (drop) apply(drop);
+        else {
+          selectedDrop = null;
+          message = '打つ場所の選択をキャンセルしました。';
+          render();
+        }
         return;
       }
     }
@@ -362,13 +367,15 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
     });
     board.addEventListener('contextmenu', (event) => {
       event.preventDefault();
-      if (selector) {
-        selector.cancel();
-        selector = null;
-        selectedSq = null;
-        message = '選択をキャンセルしました。';
-        render();
-      }
+      if (!selector && selectedSq === null && selectedDrop === null) return;
+      selector?.cancel();
+      selector = null;
+      selectedSq = null;
+      selectedDrop = null;
+      ambiguousSq = null;
+      stageAnchor = null;
+      message = '選択をキャンセルしました。';
+      render();
     });
 
     const addChips = (sq: number, chips: BoardChip[]): void => renderChips(board, sq, chips);

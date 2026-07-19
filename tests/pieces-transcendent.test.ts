@@ -157,6 +157,19 @@ describe('軍師・天地返し・未来視', () => {
     expect(next.hands.player.silver).toBe(1);
   });
 
+  it('軍師は獅子だけの味方も1歩連携移動させられる', () => {
+    const s = bare();
+    const from = sqOf(4, 4);
+    const to = sqOf(3, 4);
+    const lionSq = sqOf(3, 3);
+    put(s, from, 'gunshi', 'player');
+    put(s, lionSq, 'lion', 'player');
+    expect(pieceMoves(s, from).some((move) => move.kind === 'move'
+      && move.to === to
+      && move.escort?.from === lionSq
+      && move.escort.to === sqOf(2, 2))).toBe(true);
+  });
+
   it('天地返しは全駒を点対称へ移し、成り状態を保つ', () => {
     const s = bare();
     const from = sqOf(8, 8);
