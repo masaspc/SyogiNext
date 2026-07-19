@@ -222,11 +222,12 @@ function shockwaveWouldMove(state: GameState, from: number, owner: Owner, dir: D
     row += dir[0];
     col += dir[1];
   }
+  const warded = new Set(ray.filter((sq) => isWarded(state, sq)));
   let moved = false;
   for (let i = ray.length - 1; i >= 0; i--) {
     const source = ray[i];
     const piece = board[source];
-    if (!piece || piece.owner === owner || isRoyalPiece(piece) || isWarded({ ...state, board }, source)) continue;
+    if (!piece || piece.owner === owner || isRoyalPiece(piece) || warded.has(source)) continue;
     let destination = source;
     for (let j = i + 1; j < ray.length && !board[ray[j]]; j++) destination = ray[j];
     if (destination !== source) {

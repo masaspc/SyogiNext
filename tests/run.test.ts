@@ -29,6 +29,9 @@ describe('ステージデータ', () => {
     expect(STAGES[13].enemySpecials).toContain('raijin');
     expect(STAGES[14].enemySpecials).toContain('amaterasu');
     expect(STAGES[14].enemySpecials).toContain('maou');
+    expect(STAGES[13].enemySpecials).toContain('hadou');
+    expect(STAGES[14].enemySpecials).toContain('gonosen');
+    expect(STAGES[14].enemySpecials).not.toContain('phoenix');
     expect(STAGES[14].enemySpecials).not.toContain('kirin');
   });
 });
@@ -58,22 +61,23 @@ describe('ラン進行', () => {
       expect(weights.common).toBeLessThanOrEqual(1);
     }
     expect(rewardWeightsFor(1).mythic + rewardWeightsFor(1).celestial).toBe(40);
-    expect(rewardWeightsFor(14).mythic + rewardWeightsFor(14).celestial + rewardWeightsFor(14).forbidden).toBe(82);
+    expect(rewardWeightsFor(14).mythic + rewardWeightsFor(14).celestial + rewardWeightsFor(14).forbidden + rewardWeightsFor(14).transcendent).toBe(84);
     expect([
       rewardWeightsFor(1), rewardWeightsFor(4), rewardWeightsFor(5), rewardWeightsFor(6),
       rewardWeightsFor(10), rewardWeightsFor(11), rewardWeightsFor(13),
     ]).toEqual([
-      { common: 1, uncommon: 14, rare: 45, mythic: 35, celestial: 5, forbidden: 0 },
-      { common: 1, uncommon: 9, rare: 40, mythic: 40, celestial: 10, forbidden: 0 },
-      { common: 0, uncommon: 0, rare: 28, mythic: 47, celestial: 20, forbidden: 5 },
-      { common: 1, uncommon: 7, rare: 32, mythic: 45, celestial: 15, forbidden: 0 },
-      { common: 0, uncommon: 0, rare: 18, mythic: 47, celestial: 28, forbidden: 7 },
-      { common: 1, uncommon: 4, rare: 24, mythic: 43, celestial: 24, forbidden: 4 },
-      { common: 0, uncommon: 3, rare: 15, mythic: 42, celestial: 32, forbidden: 8 },
+      { common: 1, uncommon: 14, rare: 45, mythic: 35, celestial: 5, forbidden: 0, transcendent: 0 },
+      { common: 1, uncommon: 9, rare: 40, mythic: 40, celestial: 10, forbidden: 0, transcendent: 0 },
+      { common: 0, uncommon: 0, rare: 27, mythic: 45, celestial: 20, forbidden: 5, transcendent: 3 },
+      { common: 1, uncommon: 7, rare: 32, mythic: 45, celestial: 15, forbidden: 0, transcendent: 0 },
+      { common: 0, uncommon: 0, rare: 16, mythic: 45, celestial: 28, forbidden: 7, transcendent: 4 },
+      { common: 1, uncommon: 4, rare: 23, mythic: 42, celestial: 24, forbidden: 4, transcendent: 2 },
+      { common: 0, uncommon: 3, rare: 13, mythic: 41, celestial: 32, forbidden: 8, transcendent: 3 },
     ]);
     expect(rewardWeightsFor(1).forbidden).toBe(0);
     expect(rewardWeightsFor(5).forbidden).toBe(5);
     expect(obtainableIds().filter((id) => def(id).rarity === 'forbidden')).toHaveLength(14);
+    expect(obtainableIds().filter((id) => def(id).rarity === 'transcendent')).toHaveLength(8);
   });
 
   it('報酬候補は常に重複しない3枚になる', () => {

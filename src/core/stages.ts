@@ -23,8 +23,8 @@ export const STAGES: StageDef[] = [
   { stage: 11, depth: 4, timeMs: 2000, enemySpecials: ['elephant', 'magnet', 'windmill', 'ninja', 'spearman'] },
   { stage: 12, depth: 4, timeMs: 2000, enemySpecials: ['kirin', 'sniper', 'witch', 'knight8', 'shieldman'] },
   { stage: 13, depth: 4, timeMs: 2000, enemySpecials: ['phoenix', 'assassin', 'bomber', 'shinigami', 'tenbatsu', 'jorogumo', 'leopard', 'grudge', 'fox'] },
-  { stage: 14, depth: 5, timeMs: 3000, enemySpecials: ['lion', 'magnet', 'sniper', 'assassin', 'raijin', 'windmill', 'knight8'] },
-  { stage: 15, depth: 5, timeMs: 3000, boss: 'haoh', enemySpecials: ['gunshin', 'phoenix_b', 'maou', 'phoenix', 'assassin', 'amaterasu'] },
+  { stage: 14, depth: 5, timeMs: 3000, enemySpecials: ['lion', 'magnet', 'sniper', 'assassin', 'raijin', 'hadou', 'windmill', 'knight8'] },
+  { stage: 15, depth: 5, timeMs: 3000, boss: 'haoh', enemySpecials: ['gunshin', 'phoenix_b', 'maou', 'gonosen', 'assassin', 'amaterasu'] },
 ];
 
 // 敵側の初期配置を、中央寄りから左右へ固定順で差し替える。

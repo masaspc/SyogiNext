@@ -365,10 +365,11 @@ function resolveActive(s: GameState, m: Extract<Move, { kind: 'active' }>): void
       row += dr;
       col += dc;
     }
+    const warded = new Set(ray.filter((sq) => isWarded(s, sq)));
     for (let i = ray.length - 1; i >= 0; i--) {
       const source = ray[i];
       const target = s.board[source];
-      if (!target || target.owner === p.owner || isRoyalPiece(target) || isWarded(s, source)) continue;
+      if (!target || target.owner === p.owner || isRoyalPiece(target) || warded.has(source)) continue;
       let destination = source;
       for (let j = i + 1; j < ray.length && !s.board[ray[j]]; j++) destination = ray[j];
       if (destination !== source) {

@@ -8,17 +8,17 @@ import { sqOf } from './types';
 type RewardWeights = Record<Rarity, number>;
 
 const REWARD_WEIGHTS: { from: number; to: number; weights: RewardWeights }[] = [
-  { from: 1, to: 3, weights: { common: 1, uncommon: 14, rare: 45, mythic: 35, celestial: 5, forbidden: 0 } },
-  { from: 4, to: 4, weights: { common: 1, uncommon: 9, rare: 40, mythic: 40, celestial: 10, forbidden: 0 } },
-  { from: 5, to: 5, weights: { common: 0, uncommon: 0, rare: 28, mythic: 47, celestial: 20, forbidden: 5 } },
-  { from: 6, to: 9, weights: { common: 1, uncommon: 7, rare: 32, mythic: 45, celestial: 15, forbidden: 0 } },
-  { from: 10, to: 10, weights: { common: 0, uncommon: 0, rare: 18, mythic: 47, celestial: 28, forbidden: 7 } },
-  { from: 11, to: 12, weights: { common: 1, uncommon: 4, rare: 24, mythic: 43, celestial: 24, forbidden: 4 } },
-  { from: 13, to: 14, weights: { common: 0, uncommon: 3, rare: 15, mythic: 42, celestial: 32, forbidden: 8 } },
+  { from: 1, to: 3, weights: { common: 1, uncommon: 14, rare: 45, mythic: 35, celestial: 5, forbidden: 0, transcendent: 0 } },
+  { from: 4, to: 4, weights: { common: 1, uncommon: 9, rare: 40, mythic: 40, celestial: 10, forbidden: 0, transcendent: 0 } },
+  { from: 5, to: 5, weights: { common: 0, uncommon: 0, rare: 27, mythic: 45, celestial: 20, forbidden: 5, transcendent: 3 } },
+  { from: 6, to: 9, weights: { common: 1, uncommon: 7, rare: 32, mythic: 45, celestial: 15, forbidden: 0, transcendent: 0 } },
+  { from: 10, to: 10, weights: { common: 0, uncommon: 0, rare: 16, mythic: 45, celestial: 28, forbidden: 7, transcendent: 4 } },
+  { from: 11, to: 12, weights: { common: 1, uncommon: 4, rare: 23, mythic: 42, celestial: 24, forbidden: 4, transcendent: 2 } },
+  { from: 13, to: 14, weights: { common: 0, uncommon: 3, rare: 13, mythic: 41, celestial: 32, forbidden: 8, transcendent: 3 } },
 ];
 
 const OBTAINABLE_BY_RARITY: Record<Rarity, string[]> = {
-  common: [], uncommon: [], rare: [], mythic: [], celestial: [], forbidden: [],
+  common: [], uncommon: [], rare: [], mythic: [], celestial: [], forbidden: [], transcendent: [],
 };
 for (const id of obtainableIds()) OBTAINABLE_BY_RARITY[def(id).rarity!].push(id);
 
@@ -26,11 +26,11 @@ function drawRarity(state: number, weights: RewardWeights): { value: Rarity; sta
   const r = nextRand(state);
   const roll = r.value * 100;
   let sum = 0;
-  for (const rarity of ['common', 'uncommon', 'rare', 'mythic', 'celestial', 'forbidden'] as Rarity[]) {
+  for (const rarity of ['common', 'uncommon', 'rare', 'mythic', 'celestial', 'forbidden', 'transcendent'] as Rarity[]) {
     sum += weights[rarity];
     if (roll < sum) return { value: rarity, state: r.state };
   }
-  return { value: 'forbidden', state: r.state };
+  return { value: 'transcendent', state: r.state };
 }
 
 export function rewardWeightsFor(stage: number): RewardWeights {
