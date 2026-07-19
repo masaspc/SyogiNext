@@ -17,6 +17,7 @@ function effectNames(events: GameEvent[]): string[] {
     capture: '捕獲', vanish: '消滅', explode: '爆発', revive: '復活', warp: 'ワープ',
     petrify: '石化', convert: '寝返り', pull: '引寄', snipe: '狙撃', swap: '交換', win: '勝利',
     bolt: '落雷', gale: '突風', timestop: '刻停', execute: '断罪', devour: '捕食', spawn: '生成',
+    resurrect: '蘇生', sacrifice: '供物', doomsday: '下剋上', apocalypse: '終焉', curse: '呪い',
   };
   return [...new Set(events.map((event) => labels[event.t]).filter((label): label is string => !!label))];
 }
@@ -51,6 +52,7 @@ export function createMoveVisual(before: GameState, move: Move, after: GameState
     const abilityNames = {
       warp: 'ワープ', kingSwap: '王交換', snipe: '狙撃', convert: '寝返り', bolt: '落雷', gale: '突風',
       timestop: '刻停', execute: '断罪', ohabari: '十拳剣',
+      apocalypse: '終焉',
     } as const;
     return {
       origin: move.from,

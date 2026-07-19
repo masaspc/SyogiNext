@@ -9,6 +9,8 @@ export function bare(seed = 1): GameState {
     turn: 'player',
     moveCount: 0,
     petrified: {},
+    graveyard: [],
+    cursedKing: { player: false, enemy: false },
     bossDodgesLeft: 0,
     winner: null,
     nextPieceId: 1,

@@ -2,8 +2,8 @@
 // 方向ベクトル[dy,dx]は常に「その駒の持ち主から見た向き」(dy=-1が前)。enemyはエンジンがdyを反転する。
 
 export type Owner = 'player' | 'enemy';
-export type Rarity = 'common' | 'uncommon' | 'rare' | 'mythic' | 'celestial';
-export type ActiveKind = 'warp' | 'kingSwap' | 'snipe' | 'convert' | 'bolt' | 'gale' | 'timestop' | 'execute' | 'ohabari';
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'mythic' | 'celestial' | 'forbidden';
+export type ActiveKind = 'warp' | 'kingSwap' | 'snipe' | 'convert' | 'bolt' | 'gale' | 'timestop' | 'execute' | 'ohabari' | 'apocalypse';
 
 export interface Piece {
   id: number;
@@ -16,7 +16,7 @@ export interface Piece {
 }
 
 export type GameEvent =
-  | { t: 'capture' | 'vanish' | 'explode' | 'revive' | 'warp' | 'petrify' | 'convert' | 'pull' | 'snipe' | 'swap' | 'bolt' | 'gale' | 'timestop' | 'execute' | 'devour' | 'spawn'; sq: number; defId: string }
+  | { t: 'capture' | 'vanish' | 'explode' | 'revive' | 'warp' | 'petrify' | 'convert' | 'pull' | 'snipe' | 'swap' | 'bolt' | 'gale' | 'timestop' | 'execute' | 'devour' | 'spawn' | 'resurrect' | 'sacrifice' | 'doomsday' | 'apocalypse' | 'curse'; sq: number; defId: string }
   | { t: 'win'; who: Owner };
 
 export interface GameState {
@@ -25,6 +25,8 @@ export interface GameState {
   turn: Owner;
   moveCount: number;
   petrified: Record<number, number>; // pieceId → 残り「その駒の持ち主の手番」数
+  graveyard: { defId: string; promoted: boolean }[]; // 持ち駒にならず消滅した非ロイヤル(古い順)
+  cursedKing: Record<Owner, boolean>; // 契約の魔神を失った側の王の永続呪い
   bossDodgesLeft: number; // 敵ボスの回避ワープ残
   winner: Owner | null;
   nextPieceId: number;
@@ -67,14 +69,19 @@ export interface PieceDef {
   auto?:
     | { kind: 'spawn'; every: number; sequence: { defId: string; promoted?: boolean }[] }
     | { kind: 'replicate'; every: number }
-    | { kind: 'devour'; every: number }
-    | { kind: 'corrupt'; every: number };
+    | { kind: 'devour'; every: number; allyFallback?: boolean }
+    | { kind: 'corrupt'; every: number }
+    | { kind: 'gate'; every: number }
+    | { kind: 'swapChaos'; every: number };
   leaveBehind?: { defId: string };
   paralysisAura?: boolean;
   banEnemyDrops?: boolean;
   afterMoveChoice?: 'magnetPull' | 'petrify';
   dodge?: number; // 九尾2 / 覇王3
   chainOnCapture?: boolean; // 影の刺客
+  chainCostsHand?: boolean; // 血の女王: 追撃前に持ち駒を供物にする
+  doomsday?: boolean; // 下剋上: 敵陣最奥到達で敵軍を消滅
+  kingBoon?: boolean; // 契約の魔神: 王を強化し、除去時に呪う
 }
 
 export type Move =

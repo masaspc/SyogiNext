@@ -83,6 +83,8 @@ export function newGame(
     turn: 'player',
     moveCount: 0,
     petrified: {},
+    graveyard: [],
+    cursedKing: { player: false, enemy: false },
     bossDodgesLeft: bossDodges,
     winner: null,
     nextPieceId: nextId,

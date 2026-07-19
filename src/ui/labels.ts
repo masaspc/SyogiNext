@@ -6,4 +6,5 @@ export const RARITY_LABELS: Record<Rarity, string> = {
   rare: 'レア',
   mythic: '神話レア',
   celestial: '天上レア',
+  forbidden: '禁忌レア',
 };

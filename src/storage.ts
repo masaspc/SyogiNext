@@ -36,7 +36,23 @@ export function saveRun(run: RunState | null, storage: StorageLike = browserStor
 }
 
 export function loadRun(storage: StorageLike = browserStorage()): RunState | null {
-  return readVersioned<RunState>(storage, RUN_KEY);
+  const run = readVersioned<RunState>(storage, RUN_KEY);
+  if (!run?.game) return run;
+  const legacyGame = run.game as RunState['game'] & {
+    graveyard?: { defId: string; promoted: boolean }[];
+    cursedKing?: { player?: boolean; enemy?: boolean };
+  };
+  return {
+    ...run,
+    game: {
+      ...run.game,
+      graveyard: Array.isArray(legacyGame.graveyard) ? legacyGame.graveyard : [],
+      cursedKing: {
+        player: legacyGame.cursedKing?.player === true,
+        enemy: legacyGame.cursedKing?.enemy === true,
+      },
+    },
+  };
 }
 
 export function recordCodex(defIds: string[], storage: StorageLike = browserStorage()): void {

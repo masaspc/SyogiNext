@@ -1,7 +1,8 @@
-import type { Dir, GameState, Move, MoveInfo, Owner, Piece, PieceDef } from './types';
+import type { Dir, GameState, Move, MoveInfo, MovePattern, Owner, Piece, PieceDef } from './types';
 import { colOf, onBoard, rowOf, sqOf } from './types';
 import { ADJ, findRoyals, forward, inCamp, inPromoZone } from './board';
 import { def, effectiveDef } from './defs';
+import { ALL8, DROPPABLE } from './defs/normal';
 
 function translate(sq: number, dir: Dir, owner: Owner): number | null {
   const s = owner === 'player' ? 1 : -1;
@@ -37,6 +38,12 @@ export function captureAllowed(state: GameState, attacker: Piece, from: number, 
     if (g && g.owner === target.owner && g.id !== target.id && effectiveDef(g).aura) return false;
   }
   return true;
+}
+
+export function kingMovePatterns(state: GameState, owner: Owner): MovePattern[] {
+  if (state.cursedKing[owner]) return [{ type: 'step', dirs: [[-1, 0]] }];
+  const hasBoon = state.board.some((piece) => piece && piece.owner === owner && effectiveDef(piece).kingBoon);
+  return hasBoon ? [{ type: 'slide', dirs: ALL8, max: 2 }] : [{ type: 'step', dirs: ALL8 }];
 }
 
 function destsBasic(state: GameState, sq: number, p: Piece, d: PieceDef): { to: number; isJump: boolean }[] {
@@ -109,11 +116,14 @@ function pushMoveVariants(state: GameState, moves: Move[], p: Piece, d: PieceDef
   const baseMove: Move = { kind: 'move', from, to, promote };
   if (d.chainOnCapture && captured) {
     moves.push({ ...baseMove, chain: null });
-    const after = simulateMove(state, from, to);
-    for (const { to: c, isJump } of destsBasic(after, to, p, d)) {
-      const occ2 = after.board[c];
-      if (occ2 && !captureAllowed(after, p, to, c, isJump)) continue;
-      moves.push({ ...baseMove, chain: c });
+    const canPay = !d.chainCostsHand || DROPPABLE.some((id) => (state.hands[p.owner][id] ?? 0) > 0);
+    if (canPay) {
+      const after = simulateMove(state, from, to);
+      for (const { to: c, isJump } of destsBasic(after, to, p, d)) {
+        const occ2 = after.board[c];
+        if (occ2 && !captureAllowed(after, p, to, c, isJump)) continue;
+        moves.push({ ...baseMove, chain: c });
+      }
     }
   } else if (d.afterMoveChoice === 'magnetPull') {
     moves.push({ ...baseMove, pull: null });
@@ -242,6 +252,9 @@ function genActive(state: GameState, sq: number, p: Piece, d: PieceDef, moves: M
       && !isRoyalPiece(occ)
       && Math.max(Math.abs(rowOf(target) - rowOf(sq)), Math.abs(colOf(target) - colOf(sq))) <= 2);
     if (hasTarget) moves.push({ kind: 'active', from: sq, ability: 'ohabari', target: sq });
+  } else if (kind === 'apocalypse') {
+    const hasTarget = state.board.some((occ, target) => target !== sq && occ && !isRoyalPiece(occ));
+    if (hasTarget) moves.push({ kind: 'active', from: sq, ability: 'apocalypse', target: sq });
   }
 }
 
@@ -249,13 +262,10 @@ export function pieceMoves(state: GameState, sq: number): Move[] {
   const p = state.board[sq];
   if (!p || state.winner) return [];
   if (isImmobilized(state, sq, p)) return []; // 石化・麻痺中(§7.10, §7.16)
-  const d = effectiveDef(p);
+  const effective = effectiveDef(p);
+  const d = p.defId === 'king' ? { ...effective, moves: kingMovePatterns(state, p.owner) } : effective;
   const moves: Move[] = [];
-  if (d.moves.some((m) => m.type === 'lion')) {
-    genLion(state, sq, p, moves);
-    genActive(state, sq, p, d, moves);
-    return moves;
-  }
+  if (d.moves.some((m) => m.type === 'lion')) genLion(state, sq, p, moves);
   const base = def(p.defId);
   const canPromote = !p.promoted && !!base.promotesTo;
   for (const { to, isJump } of destsBasic(state, sq, p, d)) {

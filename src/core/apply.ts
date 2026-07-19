@@ -5,6 +5,7 @@ import { captureAllowed, isImmobilized, isRoyalPiece, pieceMoves } from './moveg
 import { pick } from './rng';
 import { inCamp } from './board';
 import { colOf, onBoard, rowOf, sqOf } from './types';
+import { DROPPABLE } from './defs/normal';
 
 function opponent(o: Owner): Owner {
   return o === 'player' ? 'enemy' : 'player';
@@ -22,11 +23,28 @@ export function attacked(state: GameState, sq: number, by: Owner): boolean {
   return false;
 }
 
+function removeFromBoard(
+  s: GameState,
+  sq: number,
+  toGraveyard: boolean,
+  removed: Piece | null = s.board[sq],
+  emitVanish = true,
+): Piece | null {
+  if (!removed) return null;
+  if (s.board[sq]?.id === removed.id) s.board[sq] = null;
+  if (emitVanish) s.events.push({ t: 'vanish', sq, defId: removed.defId });
+  if (toGraveyard && !isRoyalPiece(removed)) {
+    s.graveyard.push({ defId: removed.defId, promoted: removed.promoted });
+  }
+  if (effectiveDef(removed).kingBoon && !s.cursedKing[removed.owner]) {
+    s.cursedKing[removed.owner] = true;
+    s.events.push({ t: 'curse', sq, defId: removed.defId });
+  }
+  return removed;
+}
+
 function vanish(s: GameState, sq: number): void {
-  const p = s.board[sq];
-  if (!p) return;
-  s.board[sq] = null;
-  s.events.push({ t: 'vanish', sq, defId: p.defId });
+  removeFromBoard(s, sq, true);
 }
 
 function createPiece(s: GameState, defId: string, owner: Owner, promoted = false, autoCount?: number): Piece {
@@ -54,7 +72,7 @@ function explode(s: GameState, center: number): void {
       const v = s.board[sq];
       if (!v || isRoyalPiece(v)) continue;
       const isBomb = effectiveDef(v).onCapturedEffects === 'bomb';
-      vanish(s, sq);
+      removeFromBoard(s, sq, true);
       if (isBomb) queue.push(sq);
     }
   }
@@ -65,6 +83,7 @@ function resolveCapture(s: GameState, attacker: Piece, target: Piece, to: number
   s.events.push({ t: 'capture', sq: to, defId: target.defId });
   const tDef = effectiveDef(target);
   if (tDef.isRoyal) {
+    removeFromBoard(s, to, false, target, false);
     if (findRoyals(s, target.owner).length === 0) {
       s.winner = attacker.owner;
       s.events.push({ t: 'win', who: attacker.owner });
@@ -73,6 +92,7 @@ function resolveCapture(s: GameState, attacker: Piece, target: Piece, to: number
   }
   const effect = tDef.onCapturedEffects;
   if (effect === 'foxRevert') {
+    removeFromBoard(s, to, false, target, false);
     // 妖狐(§6.2 U8): 持ち主の駒台に歩として戻る
     s.hands[target.owner]['pawn'] = (s.hands[target.owner]['pawn'] ?? 0) + 1;
   } else if (effect === 'phoenixRevive' && !target.revived) {
@@ -82,19 +102,27 @@ function resolveCapture(s: GameState, attacker: Piece, target: Piece, to: number
       if (inCamp(target.owner, sq) && !s.board[sq]) empties.push(sq);
     }
     if (empties.length) {
+      removeFromBoard(s, to, false, target, false);
       const r = pick(s.rngState, empties);
       s.rngState = r.state;
       s.board[r.value] = { ...target, revived: true };
       s.events.push({ t: 'revive', sq: r.value, defId: target.defId });
+    } else {
+      removeFromBoard(s, to, true, target, false);
     }
   } else if (effect === 'grudge') {
+    removeFromBoard(s, to, true, target, false);
     // 怨念(§6.2 U6): 道連れ。取った駒(非ロイヤル)も消滅
-    if (!isRoyalPiece(attacker) && s.board[to] === attacker) vanish(s, to);
+    if (!isRoyalPiece(attacker) && s.board[to] === attacker) removeFromBoard(s, to, true);
   } else if (effect === 'bomb') {
+    removeFromBoard(s, to, true, target, false);
     explode(s, to);
   } else if (def(target.defId).isNormal) {
+    removeFromBoard(s, to, false, target, false);
     // 通常駒: 生駒として持ち駒へ(成りはpromotedフラグなのでdefIdそのまま)
     s.hands[attacker.owner][target.defId] = (s.hands[attacker.owner][target.defId] ?? 0) + 1;
+  } else {
+    removeFromBoard(s, to, true, target, false);
   }
   // その他の特殊駒はそのまま消滅(§3.2)
 }
@@ -123,9 +151,18 @@ function resolveBoardMove(s: GameState, m: Extract<Move, { kind: 'move' }>): voi
   }
   // 影の刺客の追撃(§6.3 R7)
   if (moved && m.chain != null) {
-    moved = moveStep(s, m.to, m.chain);
-    finalSq = m.chain;
-    if (s.winner) return;
+    const costsHand = effectiveDef(moved).chainCostsHand;
+    const sacrifice = costsHand ? DROPPABLE.find((id) => (s.hands[moved!.owner][id] ?? 0) > 0) : undefined;
+    if (!costsHand || sacrifice) {
+      if (sacrifice) {
+        s.hands[moved.owner][sacrifice]--;
+        if (!s.hands[moved.owner][sacrifice]) delete s.hands[moved.owner][sacrifice];
+        s.events.push({ t: 'sacrifice', sq: m.to, defId: sacrifice });
+      }
+      moved = moveStep(s, m.to, m.chain);
+      finalSq = m.chain;
+      if (s.winner) return;
+    }
   }
   // 磁将の引き寄せ(§6.3 R5)
   if (moved && m.pull) {
@@ -159,6 +196,17 @@ function resolveBoardMove(s: GameState, m: Extract<Move, { kind: 'move' }>): voi
     s.board[m.from] = createPiece(s, leave.defId, moved.owner);
     s.events.push({ t: 'spawn', sq: m.from, defId: leave.defId });
   }
+  if (moved && effectiveDef(moved).doomsday) {
+    const finalRow = rowOf(finalSq);
+    const enemyBackRank = moved.owner === 'player' ? 0 : 8;
+    if (finalRow === enemyBackRank) {
+      for (let targetSq = 0; targetSq < 81; targetSq++) {
+        const target = s.board[targetSq];
+        if (target && target.owner !== moved.owner && !isRoyalPiece(target)) removeFromBoard(s, targetSq, true);
+      }
+      s.events.push({ t: 'doomsday', sq: finalSq, defId: moved.defId });
+    }
+  }
 }
 
 function resolveActive(s: GameState, m: Extract<Move, { kind: 'active' }>): void {
@@ -176,7 +224,7 @@ function resolveActive(s: GameState, m: Extract<Move, { kind: 'active' }>): void
     s.events.push({ t: 'swap', sq: m.target, defId: p.defId });
   } else if (m.ability === 'snipe') {
     const t = s.board[m.target]!;
-    s.board[m.target] = null;
+    removeFromBoard(s, m.target, true);
     s.events.push({ t: 'snipe', sq: m.target, defId: t.defId });
   } else if (m.ability === 'convert') {
     const t = s.board[m.target]!;
@@ -229,6 +277,13 @@ function resolveActive(s: GameState, m: Extract<Move, { kind: 'active' }>): void
       }
     }
     s.events.push({ t: 'execute', sq: m.from, defId: p.defId });
+  } else if (m.ability === 'apocalypse') {
+    s.events.push({ t: 'apocalypse', sq: m.from, defId: p.defId });
+    for (let targetSq = 0; targetSq < 81; targetSq++) {
+      const target = s.board[targetSq];
+      if (target && !isRoyalPiece(target)) removeFromBoard(s, targetSq, true);
+    }
+    s.hands = { player: {}, enemy: {} };
   }
 }
 
@@ -247,17 +302,19 @@ function resolveAutomaticActions(s: GameState, mover: Owner): void {
     .map(({ p, sq }) => ({ id: p!.id, sq }));
 
   for (const actor of actors) {
-    const current = s.board[actor.sq];
-    if (!current || current.id !== actor.id || current.owner !== mover) continue;
-    if (isImmobilized(s, actor.sq, current)) continue;
+    const currentSq = s.board.findIndex((piece) => piece?.id === actor.id);
+    if (currentSq < 0) continue;
+    const current = s.board[currentSq];
+    if (!current || current.owner !== mover) continue;
+    if (isImmobilized(s, currentSq, current)) continue;
     const auto = effectiveDef(current).auto;
     if (!auto) continue;
     const p: Piece = { ...current, autoCount: (current.autoCount ?? 0) + 1 };
-    s.board[actor.sq] = p;
+    s.board[currentSq] = p;
     if (p.autoCount! % auto.every !== 0) continue;
 
     if (auto.kind === 'spawn' || auto.kind === 'replicate') {
-      const empties = ADJ[actor.sq].filter((sq) => !s.board[sq]);
+      const empties = ADJ[currentSq].filter((sq) => !s.board[sq]);
       if (!empties.length) continue;
       const targetSq = pickAndUpdate(s, empties);
       if (auto.kind === 'spawn') {
@@ -270,20 +327,26 @@ function resolveAutomaticActions(s: GameState, mover: Owner): void {
         s.events.push({ t: 'spawn', sq: targetSq, defId: p.defId });
       }
     } else if (auto.kind === 'devour') {
-      const targets = ADJ[actor.sq].filter((sq) => {
+      let targets = ADJ[currentSq].filter((sq) => {
         const target = s.board[sq];
         return target
           && target.owner !== mover
           && !isRoyalPiece(target)
-          && captureAllowed(s, p, actor.sq, sq, false);
+          && captureAllowed(s, p, currentSq, sq, false);
       });
+      if (!targets.length && auto.allyFallback) {
+        targets = ADJ[currentSq].filter((sq) => {
+          const target = s.board[sq];
+          return target && target.owner === mover && target.id !== p.id && !isRoyalPiece(target);
+        });
+      }
       if (!targets.length) continue;
       const targetSq = pickAndUpdate(s, targets);
       const target = s.board[targetSq]!;
-      vanish(s, targetSq);
+      removeFromBoard(s, targetSq, true);
       s.events.push({ t: 'devour', sq: targetSq, defId: target.defId });
     } else if (auto.kind === 'corrupt') {
-      const targets = ADJ[actor.sq].filter((sq) => {
+      const targets = ADJ[currentSq].filter((sq) => {
         const target = s.board[sq];
         return target && target.owner !== mover && !isRoyalPiece(target) && !!def(target.defId).isNormal;
       });
@@ -292,6 +355,24 @@ function resolveAutomaticActions(s: GameState, mover: Owner): void {
       const target = s.board[targetSq]!;
       s.board[targetSq] = { ...target, owner: mover };
       s.events.push({ t: 'convert', sq: targetSq, defId: target.defId });
+    } else if (auto.kind === 'gate') {
+      const oldest = s.graveyard[0];
+      const empties = ADJ[currentSq].filter((sq) => !s.board[sq]);
+      if (!oldest || !empties.length) continue;
+      const targetSq = pickAndUpdate(s, empties);
+      s.graveyard.shift();
+      s.board[targetSq] = createPiece(s, oldest.defId, mover, oldest.promoted);
+      s.events.push({ t: 'resurrect', sq: targetSq, defId: oldest.defId });
+    } else if (auto.kind === 'swapChaos') {
+      const enemies = s.board.flatMap((target, sq) => target && target.owner !== mover && !isRoyalPiece(target) ? [sq] : []);
+      const allies = s.board.flatMap((target, sq) => target && target.owner === mover && !isRoyalPiece(target) ? [sq] : []);
+      if (!enemies.length || !allies.length) continue;
+      const enemySq = pickAndUpdate(s, enemies);
+      const allySq = pickAndUpdate(s, allies);
+      const enemy = s.board[enemySq]!;
+      s.board[enemySq] = s.board[allySq];
+      s.board[allySq] = enemy;
+      s.events.push({ t: 'swap', sq: enemySq, defId: p.defId });
     }
   }
 }
@@ -329,6 +410,8 @@ export function applyMove(state: GameState, move: Move): GameState {
     board: state.board.slice(),
     hands: { player: { ...state.hands.player }, enemy: { ...state.hands.enemy } },
     petrified: { ...state.petrified },
+    graveyard: state.graveyard.slice(),
+    cursedKing: { ...state.cursedKing },
     events: [],
   };
   const mover = s.turn;
