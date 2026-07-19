@@ -94,6 +94,46 @@ h2 { margin: 0; font-size: clamp(34px, 5vw, 58px); }
 .hand-piece.selected { outline: 3px solid #d1a341; }
 .hand-enemy { margin-bottom: 10px; }
 .hand-player { margin-top: 10px; }
+.formation-layout { display: grid; grid-template-columns: minmax(460px, 2fr) minmax(260px, 1fr); gap: 32px; }
+.formation-notice { min-height: 28px; color: #c9b99f; }
+.formation-board { display: grid; grid-template-columns: repeat(9, 1fr); aspect-ratio: 3; border: 4px solid #5d3d22; background: #c7954f; }
+.formation-square { min-width: 0; display: grid; place-items: center; grid-template-rows: 1fr auto; gap: 2px; padding: 3px; border: 1px solid #553514; background: linear-gradient(135deg, #ddb36e, #c9964f); cursor: pointer; }
+.formation-square:disabled { background: #2d261f; cursor: default; }
+.formation-square small { color: #4b341e; font: 9px system-ui, sans-serif; }
+.formation-square.replaced { background: #d8c18c; box-shadow: inset 0 0 0 3px var(--rarity, #d1a341); }
+.formation-square.royal { box-shadow: inset 0 0 0 3px #8c2922; }
+.launch-button { width: 100%; margin-top: 24px; display: flex; align-items: center; justify-content: center; gap: 18px; border: 1px solid #c4973f; color: #2c2013; background: linear-gradient(#f0d38e, #bd8734); padding: 15px; cursor: pointer; box-shadow: 0 8px 24px #0007; }
+.launch-button span { font-size: 13px; }
+.launch-button strong { font-size: 24px; }
+.formation-side { border: 1px solid #5f503e; background: #241e18; padding: 20px; }
+.formation-side h3 { margin-top: 0; }
+.roster-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.roster-card { border: 2px solid var(--rarity); color: #2b2016; background: #d9bd87; padding: 10px 6px; display: grid; place-items: center; cursor: pointer; }
+.roster-card b { font-size: 25px; }
+.roster-card small { font: 10px system-ui, sans-serif; }
+.roster-card:disabled { opacity: .35; cursor: default; }
+.roster-card.selected { outline: 3px solid #f0ce67; }
+.empty-roster { color: #8e8375; line-height: 1.6; }
+.formation-detail { margin-top: 18px; }
+.formation-detail .move-diagram { width: min(230px, 100%); margin: auto; }
+.formation-detail p { color: #bfb19d; line-height: 1.6; }
+.reward-screen { text-align: center; display: grid; align-content: center; }
+.reward-heading > p:last-child { color: #b5a692; }
+.reward-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin: 34px 0 24px; }
+.reward-card { position: relative; min-height: 520px; border: 4px solid var(--rarity); color: #2b2116; background: linear-gradient(145deg, #f2dfb8, #cda866); padding: 24px; cursor: pointer; box-shadow: 0 18px 45px #0008; transition: transform .15s ease; }
+.reward-card:hover { transform: translateY(-8px); }
+.reward-card > b { display: block; font-size: 54px; margin: 8px; }
+.reward-card h3 { font-size: 25px; margin: 4px; }
+.reward-card p { text-align: left; line-height: 1.6; }
+.reward-card .move-diagram { width: 190px; margin: 16px auto; }
+.reward-rarity { color: var(--rarity); font: 800 11px system-ui, sans-serif; letter-spacing: .16em; text-transform: uppercase; }
+.reward-skip { justify-self: center; }
+.result-screen { display: grid; align-content: center; justify-items: center; text-align: center; }
+.result-screen h2 { font-size: clamp(70px, 12vw, 150px); color: #c7473c; text-shadow: 0 8px 30px #000; }
+.result-screen.victory h2 { color: #e0b452; }
+.result-stage { color: #c5b69f; font-size: 20px; }
+.result-roster { width: min(720px, 100%); min-height: 70px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; color: #8e8375; margin: 8px 0 30px; }
+.result-roster span { border: 1px solid var(--rarity); color: #eadfcf; background: #2b241c; padding: 8px 12px; }
 
 @media (max-width: 760px) {
   .screen { padding: 28px 16px; }
@@ -101,4 +141,7 @@ h2 { margin: 0; font-size: clamp(34px, 5vw, 58px); }
   .codex-detail { position: static; order: -1; min-height: 220px; }
   .battle-layout { grid-template-columns: 1fr; }
   .battle-side { min-height: 0; }
+  .formation-layout { grid-template-columns: 1fr; }
+  .reward-cards { grid-template-columns: 1fr; }
+  .reward-card { min-height: 0; }
 }
