@@ -1,10 +1,7 @@
 import { def, obtainableIds } from '../core/defs';
 import type { Rarity } from '../core/types';
+import { RARITY_LABELS } from './labels';
 import { moveDiagram } from './piece-view';
-
-const LABELS: Record<Rarity, string> = {
-  common: 'コモン', uncommon: 'アンコモン', rare: 'レア', mythic: '神話レア', celestial: '天上レア',
-};
 
 export function renderCodex(root: HTMLElement, encountered: string[], onBack: () => void): void {
   root.innerHTML = '';
@@ -28,7 +25,7 @@ export function renderCodex(root: HTMLElement, encountered: string[], onBack: ()
   catalog.className = 'catalog';
   for (const rarity of ['common', 'uncommon', 'rare', 'mythic', 'celestial'] as Rarity[]) {
     const section = document.createElement('section');
-    section.innerHTML = `<h3>${LABELS[rarity]}</h3>`;
+    section.innerHTML = `<h3>${RARITY_LABELS[rarity]}</h3>`;
     const grid = document.createElement('div');
     grid.className = 'codex-grid';
     for (const id of obtainableIds().filter((x) => def(x).rarity === rarity)) {
@@ -42,7 +39,7 @@ export function renderCodex(root: HTMLElement, encountered: string[], onBack: ()
       card.disabled = !known;
       if (known) card.addEventListener('click', () => {
         detail.className = `codex-detail rarity-${rarity}`;
-        detail.innerHTML = `<p class="rarity-label">${LABELS[rarity]}</p><h3>${d.name}</h3><p>${d.desc ?? '特殊能力なし'}</p>`;
+        detail.innerHTML = `<p class="rarity-label">${RARITY_LABELS[rarity]}</p><h3>${d.name}</h3><p>${d.desc ?? '特殊能力なし'}</p>`;
         detail.prepend(moveDiagram(d));
       });
       grid.append(card);

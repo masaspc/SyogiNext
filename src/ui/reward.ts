@@ -1,5 +1,6 @@
 import { def } from '../core/defs';
 import type { RunState } from '../core/types';
+import { RARITY_LABELS } from './labels';
 import { moveDiagram } from './piece-view';
 
 export function renderReward(root: HTMLElement, run: RunState, onTake: (defId: string | null) => void): void {
@@ -13,7 +14,7 @@ export function renderReward(root: HTMLElement, run: RunState, onTake: (defId: s
     const d = def(id);
     const card = document.createElement('button');
     card.className = `reward-card rarity-${d.rarity}`;
-    card.innerHTML = `<span class="reward-rarity">${d.rarity}</span><b>${d.kanji}</b><h3>${d.name}</h3><p>${d.desc ?? ''}</p>`;
+    card.innerHTML = `<span class="reward-rarity">${RARITY_LABELS[d.rarity!]}</span><b>${d.kanji}</b><h3>${d.name}</h3><p>${d.desc ?? ''}</p>`;
     card.insertBefore(moveDiagram(d), card.querySelector('p'));
     card.addEventListener('click', () => onTake(id));
     cards.append(card);

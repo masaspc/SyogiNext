@@ -7,6 +7,7 @@ import { stageDef } from '../core/stages';
 import type { GameEvent, GameState, Move, Owner, RunState } from '../core/types';
 import { renderBoard, renderHand } from './board-view';
 import { createMoveVisual, type MoveVisual } from './move-visuals';
+import { moveDiagram } from './piece-view';
 
 export interface BattleActions {
   onUpdate(run: RunState): void;
@@ -49,6 +50,7 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
   let activeMode = false;
   let variants: Extract<Move, { kind: 'move' }>[] | null = null;
   let thinking = false;
+  let passPending = false;
   let disposed = false;
   let worker: Worker | null = null;
   let message = '自分の駒を選んでください。';
@@ -72,6 +74,20 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
     return true;
   };
 
+  const maybePassPlayer = (): void => {
+    if (disposed || passPending || game().winner || game().turn !== 'player') return;
+    if (legalMoves(game(), 'player').length) return;
+    passPending = true;
+    message = '動ける駒がありません。手番をスキップします。';
+    render();
+    window.setTimeout(() => {
+      passPending = false;
+      if (!disposed && !game().winner && game().turn === 'player' && !legalMoves(game(), 'player').length) {
+        apply({ kind: 'pass' });
+      }
+    }, 500);
+  };
+
   const apply = (move: Move): void => {
     variants = null;
     selectedSq = null;
@@ -87,6 +103,7 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
     if (finishIfNeeded()) return;
     render();
     if (next.turn === 'enemy') void requestAiMove();
+    else maybePassPlayer();
   };
 
   const fallbackAi = (): void => {
@@ -125,7 +142,7 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
   };
 
   const selectSquare = (sq: number): void => {
-    if (thinking || game().turn !== 'player' || variants) return;
+    if (thinking || passPending || game().turn !== 'player' || variants) return;
     if (selectedDrop) {
       const drop = legalMoves(game(), 'player').find(
         (m): m is Extract<Move, { kind: 'drop' }> => m.kind === 'drop' && m.defId === selectedDrop && m.to === sq,
@@ -133,14 +150,15 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
       if (drop) apply(drop);
       return;
     }
-    if (activeMode && selectedSq !== null) {
+    const currentlySelected = selectedSq === null ? null : game().board[selectedSq];
+    if (activeMode && selectedSq !== null && currentlySelected?.owner === 'player') {
       const active = pieceMoves(game(), selectedSq).find(
         (m): m is Extract<Move, { kind: 'active' }> => m.kind === 'active' && m.target === sq,
       );
       if (active) apply(active);
       return;
     }
-    if (selectedSq !== null) {
+    if (selectedSq !== null && currentlySelected?.owner === 'player') {
       const candidates = pieceMoves(game(), selectedSq).filter(
         (m): m is Extract<Move, { kind: 'move' }> => m.kind === 'move' && m.to === sq,
       );
@@ -161,6 +179,11 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
       selectedDrop = null;
       activeMode = false;
       message = `${def(piece.defId).name}を選択中`;
+    } else if (piece?.owner === 'enemy') {
+      selectedSq = sq;
+      selectedDrop = null;
+      activeMode = false;
+      message = `敵の${def(piece.defId).name}を確認中。青緑の枠が移動範囲、橙の枠が能力対象です。`;
     } else {
       selectedSq = null;
       activeMode = false;
@@ -202,17 +225,22 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
     const board = document.createElement('div');
     const moves = selectedSq === null ? [] : pieceMoves(game(), selectedSq);
     const destinations = new Set(moves.filter((m) => m.kind === 'move').map((m) => (m as Extract<Move, { kind: 'move' }>).to));
+    const inspectingEnemy = selectedSq !== null && game().board[selectedSq]?.owner === 'enemy';
     const targets = new Set<number>();
     if (activeMode) for (const m of moves) if (m.kind === 'active') targets.add(m.target);
     if (selectedDrop) for (const m of legalMoves(game(), 'player')) if (m.kind === 'drop' && m.defId === selectedDrop) targets.add(m.to);
     renderBoard(board, game(), {
       selected: selectedSq,
-      destinations,
+      destinations: inspectingEnemy ? undefined : destinations,
       targets,
       lastOrigin: lastMove?.origin,
       lastDestination: lastMove?.destination,
       lastChanged: lastMove?.changed,
-      disabled: thinking,
+      inspectionDestinations: inspectingEnemy ? destinations : undefined,
+      inspectionTargets: inspectingEnemy
+        ? new Set(moves.filter((m) => m.kind === 'active').map((m) => (m as Extract<Move, { kind: 'active' }>).target))
+        : undefined,
+      disabled: thinking || passPending,
       onSquare: selectSquare,
     });
     layout.append(board);
@@ -223,9 +251,11 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
       const selectedPiece = game().board[selectedSq];
       if (selectedPiece) {
         const d = def(selectedPiece.defId);
-        side.innerHTML = `<p class="eyebrow">SELECTED</p><h3>${d.name}</h3><p>${d.desc ?? ''}</p>`;
+        const inspecting = selectedPiece.owner === 'enemy';
+        side.innerHTML = `<p class="eyebrow">${inspecting ? 'ENEMY INFO' : 'SELECTED'}</p><h3>${d.name}</h3><p>${d.desc ?? ''}</p>`;
+        side.prepend(moveDiagram(d, selectedPiece.owner));
         const activeMoves = moves.filter((m) => m.kind === 'active');
-        if (activeMoves.length) {
+        if (!inspecting && activeMoves.length) {
           const ability = document.createElement('button');
           ability.className = `menu-button ability-button${activeMode ? ' active' : ''}`;
           ability.textContent = activeMode ? '能力対象を選択中' : '能力を使う';
@@ -283,7 +313,7 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
       game(),
       'player',
       selectedDrop,
-      !thinking && game().turn === 'player' ? (id) => {
+      !thinking && !passPending && game().turn === 'player' ? (id) => {
         selectedDrop = selectedDrop === id ? null : id;
         selectedSq = null;
         activeMode = false;
@@ -302,6 +332,8 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
     }, 0);
   } else if (game().turn === 'enemy') {
     void requestAiMove();
+  } else {
+    maybePassPlayer();
   }
   return () => {
     disposed = true;

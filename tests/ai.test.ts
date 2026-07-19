@@ -45,4 +45,13 @@ describe('AI探索', () => {
     const s = newGame({}, {}, 456);
     expect(findBestMove(s, 'player', 2, 1000)).toEqual(findBestMove(s, 'player', 2, 1000));
   });
+
+  it('合法手がないときはパスを返し、手番を進める', () => {
+    const s = bare();
+    const move = findBestMove(s, 'player', 2, 100);
+    expect(move).toEqual({ kind: 'pass' });
+    const next = applyMove(s, move);
+    expect(next.turn).toBe('enemy');
+    expect(next.moveCount).toBe(1);
+  });
 });

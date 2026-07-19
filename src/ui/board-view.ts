@@ -6,6 +6,8 @@ export interface BoardViewOptions {
   selected?: number | null;
   destinations?: ReadonlySet<number>;
   targets?: ReadonlySet<number>;
+  inspectionDestinations?: ReadonlySet<number>;
+  inspectionTargets?: ReadonlySet<number>;
   lastOrigin?: number | null;
   lastDestination?: number | null;
   lastChanged?: ReadonlySet<number>;
@@ -24,6 +26,8 @@ export function renderBoard(container: HTMLElement, state: GameState, options: B
     if (options.selected === sq) cell.classList.add('selected');
     if (options.destinations?.has(sq)) cell.classList.add('destination');
     if (options.targets?.has(sq)) cell.classList.add('ability-target');
+    if (options.inspectionDestinations?.has(sq)) cell.classList.add('inspection-destination');
+    if (options.inspectionTargets?.has(sq)) cell.classList.add('inspection-target');
     if (options.lastChanged?.has(sq)) cell.classList.add('last-changed');
     if (options.lastOrigin === sq) cell.classList.add('last-origin');
     if (options.lastDestination === sq) cell.classList.add('last-destination');

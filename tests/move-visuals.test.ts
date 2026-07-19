@@ -45,4 +45,13 @@ describe('指し手の表示情報', () => {
     expect(visual.destination).toBe(to);
     expect(visual.historyLabel).toContain('歩兵打');
   });
+
+  it('パスは始点・終点なしで履歴へ記録する', () => {
+    const state = bare();
+    const move = { kind: 'pass' } as const;
+    const visual = createMoveVisual(state, move, applyMove(state, move));
+    expect(visual.origin).toBeNull();
+    expect(visual.destination).toBeNull();
+    expect(visual.historyLabel).toBe('▲パス');
+  });
 });
