@@ -1,9 +1,10 @@
 import type { GameState, Move, Owner, Piece } from './types';
 import { ADJ, findRoyals } from './board';
 import { def, effectiveDef } from './defs';
-import { isRoyalPiece, pieceMoves } from './movegen';
+import { captureAllowed, isRoyalPiece, pieceMoves } from './movegen';
 import { pick } from './rng';
 import { inCamp } from './board';
+import { colOf, onBoard, rowOf, sqOf } from './types';
 
 function opponent(o: Owner): Owner {
   return o === 'player' ? 'enemy' : 'player';
@@ -26,6 +27,18 @@ function vanish(s: GameState, sq: number): void {
   if (!p) return;
   s.board[sq] = null;
   s.events.push({ t: 'vanish', sq, defId: p.defId });
+}
+
+function createPiece(s: GameState, defId: string, owner: Owner, promoted = false, autoCount?: number): Piece {
+  const d = def(defId);
+  return {
+    id: s.nextPieceId++,
+    defId,
+    owner,
+    promoted,
+    ...(d.active ? { usesLeft: d.active.uses } : {}),
+    ...(autoCount !== undefined ? { autoCount } : {}),
+  };
 }
 
 // 爆発(§7.3-7.4): centerと周囲8の非ロイヤルを消滅。消えた爆弾兵は連鎖。捕獲扱いではない
@@ -98,6 +111,7 @@ function moveStep(s: GameState, from: number, to: number): Piece | null {
 }
 
 function resolveBoardMove(s: GameState, m: Extract<Move, { kind: 'move' }>): void {
+  const captured = s.board[m.to];
   let moved = moveStep(s, m.from, m.to);
   let finalSq = m.to;
   if (s.winner) return;
@@ -134,6 +148,17 @@ function resolveBoardMove(s: GameState, m: Extract<Move, { kind: 'move' }>): voi
   if (moved && m.promote && s.board[finalSq] === moved) {
     moved.promoted = true;
   }
+  if (moved && captured && captured.owner !== moved.owner && effectiveDef(moved).onCaptureAoE) {
+    for (const around of ADJ[finalSq]) {
+      const target = s.board[around];
+      if (target && target.owner !== moved.owner && !isRoyalPiece(target)) vanish(s, around);
+    }
+  }
+  const leave = moved && effectiveDef(moved).leaveBehind;
+  if (moved && leave && !s.board[m.from]) {
+    s.board[m.from] = createPiece(s, leave.defId, moved.owner);
+    s.events.push({ t: 'spawn', sq: m.from, defId: leave.defId });
+  }
 }
 
 function resolveActive(s: GameState, m: Extract<Move, { kind: 'active' }>): void {
@@ -157,6 +182,116 @@ function resolveActive(s: GameState, m: Extract<Move, { kind: 'active' }>): void
     const t = s.board[m.target]!;
     s.board[m.target] = { ...t, owner: p.owner };
     s.events.push({ t: 'convert', sq: m.target, defId: t.defId });
+  } else if (m.ability === 'bolt') {
+    const col = colOf(m.target);
+    for (let row = 0; row < 9; row++) {
+      const targetSq = sqOf(row, col);
+      const target = s.board[targetSq];
+      if (target && target.owner !== p.owner && !isRoyalPiece(target)) vanish(s, targetSq);
+    }
+    s.events.push({ t: 'bolt', sq: m.target, defId: p.defId });
+  } else if (m.ability === 'gale') {
+    const row = rowOf(m.target);
+    const targets: number[] = [];
+    for (let col = 0; col < 9; col++) {
+      const targetSq = sqOf(row, col);
+      const target = s.board[targetSq];
+      if (target && target.owner !== p.owner) targets.push(targetSq);
+    }
+    for (const targetSq of targets) {
+      const target = s.board[targetSq];
+      if (!target || target.owner === p.owner) continue;
+      const backRow = rowOf(targetSq) + (target.owner === 'player' ? 1 : -1);
+      const backSq = onBoard(backRow, colOf(targetSq)) ? sqOf(backRow, colOf(targetSq)) : null;
+      if (backSq !== null && !s.board[backSq]) {
+        s.board[backSq] = target;
+        s.board[targetSq] = null;
+      }
+    }
+    s.events.push({ t: 'gale', sq: m.target, defId: p.defId });
+  } else if (m.ability === 'timestop') {
+    for (const target of s.board) {
+      if (target && target.owner !== p.owner && !isRoyalPiece(target)) s.petrified[target.id] = 1;
+    }
+    s.events.push({ t: 'timestop', sq: m.from, defId: p.defId });
+  } else if (m.ability === 'execute') {
+    const target = s.board[m.target];
+    if (target && target.owner !== p.owner && !isRoyalPiece(target)) vanish(s, m.target);
+    s.events.push({ t: 'execute', sq: m.target, defId: p.defId });
+  } else if (m.ability === 'ohabari') {
+    const centerRow = rowOf(m.from);
+    const centerCol = colOf(m.from);
+    for (let targetSq = 0; targetSq < 81; targetSq++) {
+      const target = s.board[targetSq];
+      if (!target || target.owner === p.owner || isRoyalPiece(target)) continue;
+      if (Math.max(Math.abs(rowOf(targetSq) - centerRow), Math.abs(colOf(targetSq) - centerCol)) <= 2) {
+        vanish(s, targetSq);
+      }
+    }
+    s.events.push({ t: 'execute', sq: m.from, defId: p.defId });
+  }
+}
+
+function pickAndUpdate<T>(s: GameState, items: readonly T[]): T {
+  const result = pick(s.rngState, items);
+  s.rngState = result.state;
+  return result.value;
+}
+
+// 移動解決後、手番側が元から盤上にいた自動行動駒を盤面順に処理する。
+// フェーズ中に生成された駒は次の手番までカウントしない。
+function resolveAutomaticActions(s: GameState, mover: Owner): void {
+  const actors = s.board
+    .map((p, sq) => ({ p, sq }))
+    .filter(({ p }) => p && p.owner === mover && !!effectiveDef(p).auto)
+    .map(({ p, sq }) => ({ id: p!.id, sq }));
+
+  for (const actor of actors) {
+    const current = s.board[actor.sq];
+    if (!current || current.id !== actor.id || current.owner !== mover) continue;
+    const auto = effectiveDef(current).auto;
+    if (!auto) continue;
+    const p: Piece = { ...current, autoCount: (current.autoCount ?? 0) + 1 };
+    s.board[actor.sq] = p;
+    if (p.autoCount! % auto.every !== 0) continue;
+
+    if (auto.kind === 'spawn' || auto.kind === 'replicate') {
+      const empties = ADJ[actor.sq].filter((sq) => !s.board[sq]);
+      if (!empties.length) continue;
+      const targetSq = pickAndUpdate(s, empties);
+      if (auto.kind === 'spawn') {
+        const sequenceIndex = (p.autoCount! / auto.every - 1) % auto.sequence.length;
+        const next = auto.sequence[sequenceIndex];
+        s.board[targetSq] = createPiece(s, next.defId, mover, next.promoted ?? false);
+        s.events.push({ t: 'spawn', sq: targetSq, defId: next.defId });
+      } else {
+        s.board[targetSq] = createPiece(s, p.defId, mover, p.promoted, 0);
+        s.events.push({ t: 'spawn', sq: targetSq, defId: p.defId });
+      }
+    } else if (auto.kind === 'devour') {
+      const targets = ADJ[actor.sq].filter((sq) => {
+        const target = s.board[sq];
+        return target
+          && target.owner !== mover
+          && !isRoyalPiece(target)
+          && captureAllowed(s, p, actor.sq, sq, false);
+      });
+      if (!targets.length) continue;
+      const targetSq = pickAndUpdate(s, targets);
+      const target = s.board[targetSq]!;
+      vanish(s, targetSq);
+      s.events.push({ t: 'devour', sq: targetSq, defId: target.defId });
+    } else if (auto.kind === 'corrupt') {
+      const targets = ADJ[actor.sq].filter((sq) => {
+        const target = s.board[sq];
+        return target && target.owner !== mover && !isRoyalPiece(target) && !!def(target.defId).isNormal;
+      });
+      if (!targets.length) continue;
+      const targetSq = pickAndUpdate(s, targets);
+      const target = s.board[targetSq]!;
+      s.board[targetSq] = { ...target, owner: mover };
+      s.events.push({ t: 'convert', sq: targetSq, defId: target.defId });
+    }
   }
 }
 
@@ -202,9 +337,10 @@ export function applyMove(state: GameState, move: Move): GameState {
     s.board[move.to] = { id: s.nextPieceId++, defId: move.defId, owner: mover, promoted: false };
   } else if (move.kind === 'active') {
     resolveActive(s, move);
-  } else {
+  } else if (move.kind === 'move') {
     resolveBoardMove(s, move);
   }
+  if (!s.winner) resolveAutomaticActions(s, mover);
   // 手番を終えた側の石化解除(§7.10: 相手の次の手番の間=その駒の持ち主の手番が1回経過)
   for (const idStr of Object.keys(s.petrified)) {
     const id = Number(idStr);

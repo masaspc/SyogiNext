@@ -2,7 +2,8 @@
 // 方向ベクトル[dy,dx]は常に「その駒の持ち主から見た向き」(dy=-1が前)。enemyはエンジンがdyを反転する。
 
 export type Owner = 'player' | 'enemy';
-export type Rarity = 'common' | 'uncommon' | 'rare' | 'mythic';
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'mythic' | 'celestial';
+export type ActiveKind = 'warp' | 'kingSwap' | 'snipe' | 'convert' | 'bolt' | 'gale' | 'timestop' | 'execute' | 'ohabari';
 
 export interface Piece {
   id: number;
@@ -11,10 +12,11 @@ export interface Piece {
   promoted: boolean;
   usesLeft?: number; // アクティブ能力の残回数
   revived?: boolean; // 不死鳥: 復活済みか
+  autoCount?: number; // 自動行動の経過手番数
 }
 
 export type GameEvent =
-  | { t: 'capture' | 'vanish' | 'explode' | 'revive' | 'warp' | 'petrify' | 'convert' | 'pull' | 'snipe' | 'swap'; sq: number; defId: string }
+  | { t: 'capture' | 'vanish' | 'explode' | 'revive' | 'warp' | 'petrify' | 'convert' | 'pull' | 'snipe' | 'swap' | 'bolt' | 'gale' | 'timestop' | 'execute' | 'devour' | 'spawn'; sq: number; defId: string }
   | { t: 'win'; who: Owner };
 
 export interface GameState {
@@ -34,7 +36,7 @@ export type Dir = readonly [number, number]; // [dy, dx] 持ち主視点
 
 export type MovePattern =
   | { type: 'step'; dirs: readonly Dir[] }
-  | { type: 'slide'; dirs: readonly Dir[]; max?: number }
+  | { type: 'slide'; dirs: readonly Dir[]; max?: number; pierce?: number }
   | { type: 'jump'; offsets: readonly Dir[] }
   | { type: 'lion' };
 
@@ -59,8 +61,17 @@ export interface PieceDef {
   // 能力(データタグ+純粋関数。GameStateには関数を入れない)
   blockCapture?: (attacker: Piece, attackerDef: PieceDef, moveInfo: MoveInfo, target: Piece, state: GameState) => boolean;
   onCapturedEffects?: 'grudge' | 'bomb' | 'foxRevert' | 'phoenixRevive';
+  onCaptureAoE?: boolean; // 死神: 捕獲後、周囲の敵非ロイヤルを消滅
   aura?: 'guardian' | 'overlord'; // 軍神 / 覇王
-  active?: { kind: 'warp' | 'kingSwap' | 'snipe' | 'convert'; uses: number };
+  active?: { kind: ActiveKind; uses: number };
+  auto?:
+    | { kind: 'spawn'; every: number; sequence: { defId: string; promoted?: boolean }[] }
+    | { kind: 'replicate'; every: number }
+    | { kind: 'devour'; every: number }
+    | { kind: 'corrupt'; every: number };
+  leaveBehind?: { defId: string };
+  paralysisAura?: boolean;
+  banEnemyDrops?: boolean;
   afterMoveChoice?: 'magnetPull' | 'petrify';
   dodge?: number; // 九尾2 / 覇王3
   chainOnCapture?: boolean; // 影の刺客
@@ -78,7 +89,8 @@ export type Move =
       petrify?: number | null; // 石化の魔女(対象マス)
     }
   | { kind: 'drop'; defId: string; to: number }
-  | { kind: 'active'; from: number; ability: 'warp' | 'kingSwap' | 'snipe' | 'convert'; target: number };
+  | { kind: 'active'; from: number; ability: ActiveKind; target: number }
+  | { kind: 'pass' };
 
 export type RunPhase = 'formation' | 'battle' | 'reward' | 'gameover' | 'cleared';
 

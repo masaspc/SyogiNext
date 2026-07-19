@@ -3,7 +3,7 @@ import type { Rarity } from '../core/types';
 import { moveDiagram } from './piece-view';
 
 const LABELS: Record<Rarity, string> = {
-  common: 'コモン', uncommon: 'アンコモン', rare: 'レア', mythic: '神話レア',
+  common: 'コモン', uncommon: 'アンコモン', rare: 'レア', mythic: '神話レア', celestial: '天上レア',
 };
 
 export function renderCodex(root: HTMLElement, encountered: string[], onBack: () => void): void {
@@ -26,7 +26,7 @@ export function renderCodex(root: HTMLElement, encountered: string[], onBack: ()
 
   const catalog = document.createElement('div');
   catalog.className = 'catalog';
-  for (const rarity of ['common', 'uncommon', 'rare', 'mythic'] as Rarity[]) {
+  for (const rarity of ['common', 'uncommon', 'rare', 'mythic', 'celestial'] as Rarity[]) {
     const section = document.createElement('section');
     section.innerHTML = `<h3>${LABELS[rarity]}</h3>`;
     const grid = document.createElement('div');

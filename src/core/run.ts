@@ -8,17 +8,17 @@ import { sqOf } from './types';
 type RewardWeights = Record<Rarity, number>;
 
 const REWARD_WEIGHTS: { from: number; to: number; weights: RewardWeights }[] = [
-  { from: 1, to: 3, weights: { common: 70, uncommon: 25, rare: 5, mythic: 0 } },
-  { from: 4, to: 4, weights: { common: 50, uncommon: 35, rare: 13, mythic: 2 } },
-  { from: 5, to: 5, weights: { common: 0, uncommon: 0, rare: 80, mythic: 20 } },
-  { from: 6, to: 9, weights: { common: 35, uncommon: 35, rare: 23, mythic: 7 } },
-  { from: 10, to: 10, weights: { common: 0, uncommon: 0, rare: 70, mythic: 30 } },
-  { from: 11, to: 12, weights: { common: 20, uncommon: 35, rare: 33, mythic: 12 } },
-  { from: 13, to: 14, weights: { common: 10, uncommon: 30, rare: 40, mythic: 20 } },
+  { from: 1, to: 3, weights: { common: 70, uncommon: 25, rare: 5, mythic: 0, celestial: 0 } },
+  { from: 4, to: 4, weights: { common: 50, uncommon: 35, rare: 13, mythic: 2, celestial: 0 } },
+  { from: 5, to: 5, weights: { common: 0, uncommon: 0, rare: 80, mythic: 20, celestial: 0 } },
+  { from: 6, to: 9, weights: { common: 35, uncommon: 35, rare: 23, mythic: 7, celestial: 0 } },
+  { from: 10, to: 10, weights: { common: 0, uncommon: 0, rare: 70, mythic: 30, celestial: 0 } },
+  { from: 11, to: 12, weights: { common: 20, uncommon: 35, rare: 33, mythic: 12, celestial: 0 } },
+  { from: 13, to: 14, weights: { common: 10, uncommon: 30, rare: 40, mythic: 20, celestial: 0 } },
 ];
 
 const OBTAINABLE_BY_RARITY: Record<Rarity, string[]> = {
-  common: [], uncommon: [], rare: [], mythic: [],
+  common: [], uncommon: [], rare: [], mythic: [], celestial: [],
 };
 for (const id of obtainableIds()) OBTAINABLE_BY_RARITY[def(id).rarity!].push(id);
 
@@ -26,11 +26,11 @@ function drawRarity(state: number, weights: RewardWeights): { value: Rarity; sta
   const r = nextRand(state);
   const roll = r.value * 100;
   let sum = 0;
-  for (const rarity of ['common', 'uncommon', 'rare', 'mythic'] as Rarity[]) {
+  for (const rarity of ['common', 'uncommon', 'rare', 'mythic', 'celestial'] as Rarity[]) {
     sum += weights[rarity];
     if (roll < sum) return { value: rarity, state: r.state };
   }
-  return { value: 'mythic', state: r.state };
+  return { value: 'celestial', state: r.state };
 }
 
 function rewardOffer(stage: number, initialState: number): { offer: string[]; state: number } {

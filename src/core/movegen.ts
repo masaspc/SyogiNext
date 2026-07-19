@@ -43,13 +43,19 @@ function destsBasic(state: GameState, sq: number, p: Piece, d: PieceDef): { to: 
     } else if (pat.type === 'slide') {
       for (const dir of pat.dirs) {
         let cur = sq;
+        let pierceLeft = pat.pierce ?? 0;
         for (let step = 0; step < (pat.max ?? 8); step++) {
           const to = translate(cur, dir, p.owner);
           if (to === null) break;
           const occ = state.board[to];
-          if (occ && occ.owner === p.owner) break;
-          out.push({ to, isJump: false });
-          if (occ) break;
+          if (!occ) {
+            out.push({ to, isJump: false });
+            cur = to;
+            continue;
+          }
+          if (occ.owner !== p.owner) out.push({ to, isJump: false });
+          if (pierceLeft <= 0) break;
+          pierceLeft--;
           cur = to;
         }
       }
@@ -186,6 +192,46 @@ function genActive(state: GameState, sq: number, p: Piece, d: PieceDef, moves: M
         moves.push({ kind: 'active', from: sq, ability: 'convert', target: a });
       }
     }
+  } else if (kind === 'bolt') {
+    for (let col = 0; col < 9; col++) {
+      for (let row = 0; row < 9; row++) {
+        const target = sqOf(row, col);
+        const occ = state.board[target];
+        if (occ && occ.owner !== p.owner && !isRoyalPiece(occ)) {
+          moves.push({ kind: 'active', from: sq, ability: 'bolt', target });
+          break;
+        }
+      }
+    }
+  } else if (kind === 'gale') {
+    for (let row = 0; row < 9; row++) {
+      for (let col = 0; col < 9; col++) {
+        const target = sqOf(row, col);
+        const occ = state.board[target];
+        if (!occ || occ.owner === p.owner) continue;
+        const backRow = row + (occ.owner === 'player' ? 1 : -1);
+        if (onBoard(backRow, col) && !state.board[sqOf(backRow, col)]) {
+          moves.push({ kind: 'active', from: sq, ability: 'gale', target });
+          break;
+        }
+      }
+    }
+  } else if (kind === 'timestop') {
+    const hasTarget = state.board.some((occ) => occ && occ.owner !== p.owner && !isRoyalPiece(occ));
+    if (hasTarget) moves.push({ kind: 'active', from: sq, ability: 'timestop', target: sq });
+  } else if (kind === 'execute') {
+    for (let target = 0; target < 81; target++) {
+      const occ = state.board[target];
+      if (occ && occ.owner !== p.owner && !isRoyalPiece(occ)) {
+        moves.push({ kind: 'active', from: sq, ability: 'execute', target });
+      }
+    }
+  } else if (kind === 'ohabari') {
+    const hasTarget = state.board.some((occ, target) => occ
+      && occ.owner !== p.owner
+      && !isRoyalPiece(occ)
+      && Math.max(Math.abs(rowOf(target) - rowOf(sq)), Math.abs(colOf(target) - colOf(sq))) <= 2);
+    if (hasTarget) moves.push({ kind: 'active', from: sq, ability: 'ohabari', target: sq });
   }
 }
 
@@ -194,6 +240,10 @@ export function pieceMoves(state: GameState, sq: number): Move[] {
   if (!p || state.winner) return [];
   if (state.petrified[p.id]) return []; // 石化中(§7.10)
   const d = effectiveDef(p);
+  if (!d.isRoyal && ADJ[sq].some((a) => {
+    const neighbor = state.board[a];
+    return neighbor && neighbor.owner !== p.owner && effectiveDef(neighbor).paralysisAura;
+  })) return [];
   const moves: Move[] = [];
   if (d.moves.some((m) => m.type === 'lion')) {
     genLion(state, sq, p, moves);
@@ -225,6 +275,7 @@ function hasOwnPawnInCol(state: GameState, owner: Owner, col: number): boolean {
 }
 
 function genDrops(state: GameState, owner: Owner, moves: Move[]): void {
+  if (state.board.some((p) => p && p.owner !== owner && effectiveDef(p).banEnemyDrops)) return;
   const hand = state.hands[owner];
   for (const defId of Object.keys(hand)) {
     if (!hand[defId]) continue;

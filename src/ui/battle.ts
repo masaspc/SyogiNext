@@ -35,7 +35,8 @@ function eventText(event: GameEvent): string {
   if (event.t === 'win') return `${event.who === 'player' ? 'プレイヤー' : '敵'}の勝利`;
   const names: Record<Exclude<GameEvent['t'], 'win'>, string> = {
     capture: '捕獲', vanish: '消滅', explode: '爆発', revive: '復活', warp: 'ワープ', petrify: '石化',
-    convert: '寝返り', pull: '引き寄せ', snipe: '狙撃', swap: '入れ替え',
+    convert: '寝返り', pull: '引き寄せ', snipe: '狙撃', swap: '入れ替え', bolt: '落雷', gale: '突風',
+    timestop: '刻停', execute: '断罪', devour: '捕食', spawn: '生成',
   };
   return `${names[event.t]}: ${def(event.defId).name}`;
 }

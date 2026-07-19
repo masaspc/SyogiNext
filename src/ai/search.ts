@@ -9,9 +9,11 @@ const WIN = 1_000_000;
 class SearchTimeout extends Error {}
 
 function moveOrderScore(state: GameState, move: Move): number {
+  if (move.kind === 'pass') return 0;
   if (move.kind === 'drop') return 0;
   if (move.kind === 'active') {
     const target = state.board[move.target];
+    if (['bolt', 'ohabari', 'timestop', 'execute'].includes(move.ability)) return 800;
     return move.ability === 'snipe' && target ? effectiveDef(target).aiValue : 10;
   }
   let score = 0;
@@ -24,8 +26,10 @@ function moveOrderScore(state: GameState, move: Move): number {
   return score;
 }
 
-function orderedMoves(state: GameState): Move[] {
-  return legalMoves(state, state.turn)
+export function orderedMoves(state: GameState): Move[] {
+  const moves = legalMoves(state, state.turn);
+  if (!moves.length) return [{ kind: 'pass' }];
+  return moves
     .map((move, index) => ({ move, index, score: moveOrderScore(state, move) }))
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map(({ move }) => move);
@@ -44,7 +48,6 @@ function minimax(
   if (state.winner) return state.winner === pov ? WIN - ply : -WIN + ply;
   if (depth === 0) return evaluate(state, pov, state.rngState ^ state.moveCount);
   const moves = orderedMoves(state);
-  if (!moves.length) return evaluate(state, pov, state.rngState ^ state.moveCount);
 
   let alpha = alphaStart;
   let beta = betaStart;
@@ -68,7 +71,6 @@ function minimax(
 
 function searchDepth(state: GameState, pov: Owner, depth: number, deadline: number): Move {
   const moves = orderedMoves(state);
-  if (!moves.length) throw new Error('no legal moves');
   const maximizing = state.turn === pov;
   let bestMove = moves[0];
   let bestScore = maximizing ? -Infinity : Infinity;
@@ -89,7 +91,6 @@ function searchDepth(state: GameState, pov: Owner, depth: number, deadline: numb
 
 export function findBestMove(state: GameState, pov: Owner, depth: number, timeMs: number): Move {
   const moves = orderedMoves(state);
-  if (!moves.length) throw new Error('no legal moves');
   const deadline = performance.now() + Math.max(1, timeMs);
   let completed = moves[0];
   for (let currentDepth = 1; currentDepth <= Math.max(1, depth); currentDepth++) {
