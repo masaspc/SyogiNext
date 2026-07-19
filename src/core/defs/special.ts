@@ -98,7 +98,18 @@ const CELESTIALS: PieceDef[] = [
   { id: 'ryujin', name: '龍神', kanji: '龍神', rarity: 'celestial', aiValue: 2600, moves: [{ type: 'slide', dirs: ALL8, pierce: 1 }], desc: '全8方向に何マスでも動ける。敵味方を問わず駒1枚だけを飛び越えて先へ進める。' },
 ];
 
-export const SPECIAL_DEFS: PieceDef[] = [...COMMONS, ...UNCOMMONS, ...RARES, ...MYTHICS, ...CELESTIALS];
+// ===== 禁忌レア =====
+const FORBIDDEN: PieceDef[] = [
+  { id: 'maou', name: '魔王', kanji: '魔王', rarity: 'forbidden', aiValue: 3200, moves: [{ type: 'slide', dirs: ALL8 }, { type: 'lion' }], auto: { kind: 'devour', every: 1, allyFallback: true }, desc: '全8方向への走りと獅子の二回行動を併せ持つ。毎手番、隣接敵を捕食するが、敵がいなければ味方を喰らう。' },
+  { id: 'gekokujo', name: '下剋上', kanji: '下剋', rarity: 'forbidden', aiValue: 1800, moves: [{ type: 'step', dirs: [F] }], doomsday: true, desc: '前に1マスしか進めない。敵陣最奥へ到達した瞬間、敵の全非ロイヤル駒を消滅させる。' },
+  { id: 'meifu', name: '冥府の門', kanji: '冥門', rarity: 'forbidden', aiValue: 2800, moves: [], auto: { kind: 'gate', every: 1 }, desc: '一切動けない。毎手番、墓地で最も古い駒1体を自軍として隣接マスへ蘇生し続ける。' },
+  { id: 'amanojaku', name: '天邪鬼', kanji: '天邪', rarity: 'forbidden', aiValue: 2000, moves: [{ type: 'step', dirs: ALL8 }], auto: { kind: 'swapChaos', every: 1 }, desc: '8方向に1マス動ける。毎手番、敵非ロイヤル1体と自軍非ロイヤル1体の位置を無作為に強制交換する。' },
+  { id: 'majin', name: '契約の魔神', kanji: '契魔', rarity: 'forbidden', aiValue: 2600, moves: [{ type: 'slide', dirs: ORTH }, { type: 'slide', dirs: DIAG, max: 2 }], kingBoon: true, desc: '盤上にいる間は自軍の王を8方向2マスへ強化する。失うと王は前1しか動けない永続呪いを受ける。' },
+  { id: 'chinojoou', name: '血の女王', kanji: '血后', rarity: 'forbidden', aiValue: 2400, moves: [{ type: 'slide', dirs: DIAG }, { type: 'step', dirs: [L, R] }], chainOnCapture: true, chainCostsHand: true, desc: '斜めに何マスでも、横に1マス動ける。捕獲時、持ち駒1枚を供物に捧げると続けてもう1回移動できる。' },
+  { id: 'hoshikui', name: '星喰い', kanji: '星喰', rarity: 'forbidden', aiValue: 2200, moves: [{ type: 'jump', offsets: [[-2, 0], [2, 0], [0, -2], [0, 2], [-2, -2], [-2, 2], [2, -2], [2, 2]] }], active: { kind: 'apocalypse', uses: 1 }, desc: '8方向へ2マス跳ぶ。終焉を使うと自身を含む全非ロイヤル駒と両軍の持ち駒を消し去る。' },
+];
+
+export const SPECIAL_DEFS: PieceDef[] = [...COMMONS, ...UNCOMMONS, ...RARES, ...MYTHICS, ...CELESTIALS, ...FORBIDDEN];
 
 // UI用: プレイヤーが獲得できる駒(成り形は除く)
 export function obtainableIds(): string[] {
