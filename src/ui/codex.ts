@@ -23,7 +23,7 @@ export function renderCodex(root: HTMLElement, encountered: string[], onBack: ()
 
   const catalog = document.createElement('div');
   catalog.className = 'catalog';
-  for (const rarity of ['common', 'uncommon', 'rare', 'mythic', 'celestial', 'forbidden'] as Rarity[]) {
+  for (const rarity of ['common', 'uncommon', 'rare', 'mythic', 'celestial', 'forbidden', 'transcendent'] as Rarity[]) {
     const section = document.createElement('section');
     section.innerHTML = `<h3>${RARITY_LABELS[rarity]}</h3>`;
     const grid = document.createElement('div');

@@ -9,6 +9,12 @@ export function pieceToken(piece: Piece): HTMLElement {
   const token = document.createElement('span');
   token.className = `piece-token owner-${piece.owner} rarity-${def(piece.defId).rarity ?? 'normal'}${piece.promoted ? ' promoted' : ''}${d.kanji.length > 1 ? ' long-label' : ''}`;
   token.textContent = d.kanji;
+  if (def(piece.defId).throne && (piece.throneCount ?? 0) > 0) {
+    const badge = document.createElement('small');
+    badge.className = 'throne-count';
+    badge.textContent = `${piece.throneCount}/3`;
+    token.append(badge);
+  }
   token.title = d.name;
   return token;
 }

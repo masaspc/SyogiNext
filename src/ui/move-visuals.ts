@@ -19,6 +19,7 @@ function effectNames(events: GameEvent[]): string[] {
     bolt: '落雷', gale: '突風', timestop: '刻停', execute: '断罪', devour: '捕食', spawn: '生成',
     resurrect: '蘇生', sacrifice: '供物', doomsday: '下剋上', apocalypse: '終焉', curse: '呪い',
     steal: '強奪', smite: '神罰',
+    throne: '天下統一', counter: '後の先', shockwave: '波動球', flip: '天地返し', absorb: '習得', escort: '連携',
   };
   return [...new Set(events.map((event) => labels[event.t]).filter((label): label is string => !!label))];
 }
@@ -55,6 +56,7 @@ export function createMoveVisual(before: GameState, move: Move, after: GameState
       timestop: '刻停', execute: '断罪', ohabari: '十拳剣',
       apocalypse: '終焉',
       smite: '神罰',
+      shockwave: '波動球', boardFlip: '天地返し',
     } as const;
     return {
       origin: move.from,
