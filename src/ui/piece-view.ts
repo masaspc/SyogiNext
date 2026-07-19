@@ -7,7 +7,7 @@ export function pieceToken(piece: Piece): HTMLElement {
     return base.promotesTo && base.promotesTo !== 'gold' ? def(base.promotesTo) : base;
   })() : def(piece.defId);
   const token = document.createElement('span');
-  token.className = `piece-token owner-${piece.owner} rarity-${def(piece.defId).rarity ?? 'normal'}${piece.promoted ? ' promoted' : ''}`;
+  token.className = `piece-token owner-${piece.owner} rarity-${def(piece.defId).rarity ?? 'normal'}${piece.promoted ? ' promoted' : ''}${d.kanji.length > 1 ? ' long-label' : ''}`;
   token.textContent = d.kanji;
   token.title = d.name;
   return token;

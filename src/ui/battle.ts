@@ -6,6 +6,7 @@ import { isAttacked, legalMoves, pieceMoves } from '../core/movegen';
 import { stageDef } from '../core/stages';
 import type { GameEvent, GameState, Move, Owner, RunState } from '../core/types';
 import { renderBoard, renderHand } from './board-view';
+import { createMoveVisual, type MoveVisual } from './move-visuals';
 
 export interface BattleActions {
   onUpdate(run: RunState): void;
@@ -50,6 +51,8 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
   let disposed = false;
   let worker: Worker | null = null;
   let message = '自分の駒を選んでください。';
+  let lastMove: MoveVisual | null = null;
+  const moveHistory: string[] = [];
 
   const game = (): GameState => run.game!;
 
@@ -73,7 +76,11 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
     selectedSq = null;
     selectedDrop = null;
     activeMode = false;
-    const next = applyMove(game(), move);
+    const before = game();
+    const next = applyMove(before, move);
+    lastMove = createMoveVisual(before, move, next);
+    moveHistory.unshift(lastMove.historyLabel);
+    if (moveHistory.length > 10) moveHistory.length = 10;
     update(next);
     message = next.events.map(eventText).join(' ・ ') || '手を進めました。';
     if (finishIfNeeded()) return;
@@ -197,7 +204,16 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
     const targets = new Set<number>();
     if (activeMode) for (const m of moves) if (m.kind === 'active') targets.add(m.target);
     if (selectedDrop) for (const m of legalMoves(game(), 'player')) if (m.kind === 'drop' && m.defId === selectedDrop) targets.add(m.to);
-    renderBoard(board, game(), { selected: selectedSq, destinations, targets, disabled: thinking, onSquare: selectSquare });
+    renderBoard(board, game(), {
+      selected: selectedSq,
+      destinations,
+      targets,
+      lastOrigin: lastMove?.origin,
+      lastDestination: lastMove?.destination,
+      lastChanged: lastMove?.changed,
+      disabled: thinking,
+      onSquare: selectSquare,
+    });
     layout.append(board);
 
     const side = document.createElement('aside');
@@ -238,6 +254,25 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
       choices.append(cancel);
       side.append(choices);
     }
+    const history = document.createElement('section');
+    history.className = 'move-history';
+    const historyTitle = document.createElement('strong');
+    historyTitle.textContent = '直近の手順';
+    history.append(historyTitle);
+    if (!moveHistory.length) {
+      const empty = document.createElement('p');
+      empty.textContent = 'まだ指し手はありません。';
+      history.append(empty);
+    } else {
+      const list = document.createElement('ol');
+      for (const item of moveHistory) {
+        const entry = document.createElement('li');
+        entry.textContent = item;
+        list.append(entry);
+      }
+      history.append(list);
+    }
+    side.append(history);
     layout.append(side);
     screen.append(layout);
 
