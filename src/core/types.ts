@@ -13,6 +13,7 @@ export interface Piece {
   usesLeft?: number; // アクティブ能力の残回数
   revived?: boolean; // 不死鳥: 復活済みか
   autoCount?: number; // 自動行動の経過手番数
+  conjured?: boolean; // エンジンが顕現させた駒。捕獲されても持ち駒にならない
 }
 
 export type GameEvent =
@@ -27,6 +28,7 @@ export interface GameState {
   petrified: Record<number, number>; // pieceId → 残り「その駒の持ち主の手番」数
   graveyard: { defId: string; promoted: boolean }[]; // 持ち駒にならず消滅した非ロイヤル(古い順)
   cursedKing: Record<Owner, boolean>; // 契約の魔神を失った側の王の永続呪い
+  stolen: string[]; // 酒呑童子がこの対局で強奪した特殊駒
   bossDodgesLeft: number; // 敵ボスの回避ワープ残
   winner: Owner | null;
   nextPieceId: number;

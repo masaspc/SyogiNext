@@ -11,6 +11,7 @@ export function bare(seed = 1): GameState {
     petrified: {},
     graveyard: [],
     cursedKing: { player: false, enemy: false },
+    stolen: [],
     bossDodgesLeft: 0,
     winner: null,
     nextPieceId: 1,
@@ -24,7 +25,7 @@ export function put(
   sq: number,
   defId: string,
   owner: Owner,
-  opts: Partial<Pick<Piece, 'promoted' | 'usesLeft' | 'revived' | 'autoCount'>> = {},
+  opts: Partial<Pick<Piece, 'promoted' | 'usesLeft' | 'revived' | 'autoCount' | 'conjured'>> = {},
 ): Piece {
   const d = def(defId);
   const p: Piece = {
@@ -35,6 +36,7 @@ export function put(
     ...(d.active ? { usesLeft: opts.usesLeft ?? d.active.uses } : {}),
     ...(opts.revived !== undefined ? { revived: opts.revived } : {}),
     ...(opts.autoCount !== undefined ? { autoCount: opts.autoCount } : {}),
+    ...(opts.conjured !== undefined ? { conjured: opts.conjured } : {}),
   };
   if (opts.usesLeft !== undefined) p.usesLeft = opts.usesLeft;
   state.board[sq] = p;

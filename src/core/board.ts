@@ -85,6 +85,7 @@ export function newGame(
     petrified: {},
     graveyard: [],
     cursedKing: { player: false, enemy: false },
+    stolen: [],
     bossDodgesLeft: bossDodges,
     winner: null,
     nextPieceId: nextId,

@@ -78,11 +78,11 @@ const MYTHICS: PieceDef[] = [
   { id: 'kugutsushi', name: '傀儡師', kanji: '傀', rarity: 'mythic', aiValue: 1200, moves: [{ type: 'slide', dirs: ORTH, max: 2 }], active: { kind: 'convert', uses: 1 }, desc: '縦横に2マスまで動ける。1ゲーム1回、隣接する敵の通常駒を自軍に寝返らせる。' },
   { id: 'raijin', name: '雷神', kanji: '雷', rarity: 'mythic', aiValue: 1700, moves: [{ type: 'slide', dirs: ORTH, max: 2 }, { type: 'step', dirs: DIAG }], active: { kind: 'bolt', uses: 1 }, desc: '縦横に2マスまで、斜めに1マス動ける。1ゲーム1回、選んだ縦一列の敵非ロイヤル駒を落雷で全て消滅させる。' },
   { id: 'fujin', name: '風神', kanji: '風神', rarity: 'mythic', aiValue: 1350, moves: [{ type: 'slide', dirs: [L, R] }, { type: 'slide', dirs: [F, B], max: 2 }], active: { kind: 'gale', uses: 2 }, desc: '横に何マスでも、前後に2マスまで動ける。2回、選んだ段の敵駒を自陣方向へ1マス押し戻す。' },
-  { id: 'chibosin', name: '地母神', kanji: '地母', rarity: 'mythic', aiValue: 1400, moves: [{ type: 'step', dirs: ORTH }], auto: { kind: 'spawn', every: 1, sequence: [{ defId: 'pawn' }] }, desc: '縦横に1マス動ける。自分の毎手番終了時、隣接する空きマスに歩を生成する。' },
-  { id: 'kajishin', name: '鍛冶神', kanji: '鍛', rarity: 'mythic', aiValue: 1500, moves: [{ type: 'slide', dirs: DIAG, max: 2 }], auto: { kind: 'spawn', every: 2, sequence: [{ defId: 'gold' }, { defId: 'silver' }] }, desc: '斜めに2マスまで動ける。自分の2手番ごとに金、銀の順で隣接する空きマスへ生成する。' },
+  { id: 'chibosin', name: '地母神', kanji: '地母', rarity: 'mythic', aiValue: 1400, moves: [{ type: 'step', dirs: ORTH }], auto: { kind: 'spawn', every: 1, sequence: [{ defId: 'pawn' }] }, desc: '縦横に1マス動ける。自分の毎手番終了時、隣接する空きマスに歩を生成する(顕現駒は敵に奪われない)。' },
+  { id: 'kajishin', name: '鍛冶神', kanji: '鍛', rarity: 'mythic', aiValue: 1500, moves: [{ type: 'slide', dirs: DIAG, max: 2 }], auto: { kind: 'spawn', every: 2, sequence: [{ defId: 'gold' }, { defId: 'silver' }] }, desc: '斜めに2マスまで動ける。自分の2手番ごとに金、銀の順で隣接する空きマスへ顕現させる(敵に奪われない)。' },
   { id: 'shinigami', name: '死神', kanji: '死', rarity: 'mythic', aiValue: 1650, moves: [{ type: 'slide', dirs: DIAG }], onCaptureAoE: true, desc: '斜めに何マスでも動ける。敵駒を捕獲すると、着地地点の周囲にいる敵非ロイヤル駒も消滅させる。' },
   { id: 'tokinomiko', name: '時の巫女', kanji: '時', rarity: 'mythic', aiValue: 1550, moves: [{ type: 'step', dirs: ALL8 }], active: { kind: 'timestop', uses: 1 }, desc: '8方向に1マス動ける。1ゲーム1回、敵の全非ロイヤル駒を次の敵手番の間だけ行動不能にする。' },
-  { id: 'zanei', name: '残影', kanji: '残', rarity: 'mythic', aiValue: 1450, moves: [{ type: 'slide', dirs: ORTH, max: 2 }], leaveBehind: { defId: 'pawn' }, desc: '縦横に2マスまで動ける。移動するたび、最初にいたマスへ歩を生成する。' },
+  { id: 'zanei', name: '残影', kanji: '残', rarity: 'mythic', aiValue: 1450, moves: [{ type: 'slide', dirs: ORTH, max: 2 }], leaveBehind: { defId: 'pawn' }, desc: '縦横に2マスまで動ける。移動するたび、最初にいたマスへ敵に奪われない顕現の歩を残す。' },
   { id: 'bunshin', name: '分身武者', kanji: '分', rarity: 'mythic', aiValue: 1550, moves: [{ type: 'step', dirs: ALL8 }], auto: { kind: 'replicate', every: 2 }, desc: '8方向に1マス動ける。自分の2手番ごとに隣接する空きマスへ自身の分身を生成する。' },
 ];
 
@@ -91,7 +91,7 @@ const CELESTIALS: PieceDef[] = [
   { id: 'amaterasu', name: '天照', kanji: '天照', rarity: 'celestial', aiValue: 2600, moves: [{ type: 'slide', dirs: ALL8 }], paralysisAura: true, desc: '全8方向に何マスでも動ける。隣接する敵非ロイヤル駒を麻痺させ、行動不能にする。' },
   { id: 'susanoo', name: '須佐之男', kanji: '須佐', rarity: 'celestial', aiValue: 2400, moves: [{ type: 'slide', dirs: ORTH }, { type: 'slide', dirs: DIAG, max: 2 }], active: { kind: 'ohabari', uses: 1 }, desc: '縦横に何マスでも、斜めに2マスまで動ける。1回、十拳剣で自身中心5×5の敵非ロイヤル駒を消滅させる。' },
   { id: 'tsukuyomi', name: '月読', kanji: '月読', rarity: 'celestial', aiValue: 2000, moves: [{ type: 'slide', dirs: ALL8, max: 2 }], banEnemyDrops: true, desc: '全8方向に2マスまで動ける。盤上にいる間、敵は持ち駒を打てない。' },
-  { id: 'inari', name: '稲荷', kanji: '稲荷', rarity: 'celestial', aiValue: 2500, moves: [{ type: 'jump', offsets: [[-2, -2], [-2, 2], [2, -2], [2, 2]] }, { type: 'step', dirs: ORTH }], auto: { kind: 'spawn', every: 1, sequence: [{ defId: 'silver' }, { defId: 'gold' }, { defId: 'bishop' }, { defId: 'rook' }, { defId: 'bishop', promoted: true }] }, desc: '斜めに2マス跳び、縦横に1マス動ける。毎手番、銀・金・角・飛・馬の順に生成する。' },
+  { id: 'inari', name: '稲荷', kanji: '稲荷', rarity: 'celestial', aiValue: 2500, moves: [{ type: 'jump', offsets: [[-2, -2], [-2, 2], [2, -2], [2, 2]] }, { type: 'step', dirs: ORTH }], auto: { kind: 'spawn', every: 1, sequence: [{ defId: 'silver' }, { defId: 'gold' }, { defId: 'bishop' }, { defId: 'rook' }, { defId: 'bishop', promoted: true }] }, desc: '斜めに2マス跳び、縦横に1マス動ける。毎手番、銀・金・角・飛・馬の順に生成する(顕現駒は敵に奪われない)。' },
   { id: 'orochi', name: '八岐大蛇', kanji: '大蛇', rarity: 'celestial', aiValue: 2400, moves: [{ type: 'step', dirs: ALL8 }], auto: { kind: 'devour', every: 1 }, desc: '8方向に1マス動ける。毎手番終了時、守られていない隣接敵非ロイヤル駒1体を捕食して消滅させる。' },
   { id: 'magatsukami', name: '禍津神', kanji: '禍', rarity: 'celestial', aiValue: 2200, moves: [{ type: 'slide', dirs: DIAG, max: 2 }], auto: { kind: 'corrupt', every: 2 }, desc: '斜めに2マスまで動ける。2手番ごとに隣接する敵の通常駒1体を自軍へ寝返らせる。' },
   { id: 'enma', name: '閻魔', kanji: '閻', rarity: 'celestial', aiValue: 2200, moves: [{ type: 'step', dirs: ALL8 }], active: { kind: 'execute', uses: 3 }, desc: '8方向に1マス動ける。3回、盤上の任意の敵非ロイヤル駒1体を断罪して消滅させる。' },
@@ -102,7 +102,7 @@ const CELESTIALS: PieceDef[] = [
 const FORBIDDEN: PieceDef[] = [
   { id: 'maou', name: '魔王', kanji: '魔王', rarity: 'forbidden', aiValue: 3200, moves: [{ type: 'slide', dirs: ALL8 }, { type: 'lion' }], auto: { kind: 'devour', every: 1, allyFallback: true }, desc: '全8方向への走りと獅子の二回行動を併せ持つ。毎手番、隣接敵を捕食するが、敵がいなければ味方を喰らう。' },
   { id: 'gekokujo', name: '下剋上', kanji: '下剋', rarity: 'forbidden', aiValue: 1800, moves: [{ type: 'step', dirs: [F] }], doomsday: true, desc: '前に1マスしか進めない。敵陣最奥へ到達した瞬間、敵の全非ロイヤル駒を消滅させる。' },
-  { id: 'meifu', name: '冥府の門', kanji: '冥門', rarity: 'forbidden', aiValue: 2800, moves: [], auto: { kind: 'gate', every: 1 }, desc: '一切動けない。毎手番、墓地で最も古い駒1体を自軍として隣接マスへ蘇生し続ける。' },
+  { id: 'meifu', name: '冥府の門', kanji: '冥門', rarity: 'forbidden', aiValue: 2800, moves: [], auto: { kind: 'gate', every: 1 }, desc: '一切動けない。毎手番、墓地で最も古い駒1体を敵に奪われない顕現駒として蘇生し続ける。' },
   { id: 'amanojaku', name: '天邪鬼', kanji: '天邪', rarity: 'forbidden', aiValue: 2000, moves: [{ type: 'step', dirs: ALL8 }], auto: { kind: 'swapChaos', every: 1 }, desc: '8方向に1マス動ける。毎手番、敵非ロイヤル1体と自軍非ロイヤル1体の位置を無作為に強制交換する。' },
   { id: 'majin', name: '契約の魔神', kanji: '契魔', rarity: 'forbidden', aiValue: 2600, moves: [{ type: 'slide', dirs: ORTH }, { type: 'slide', dirs: DIAG, max: 2 }], kingBoon: true, desc: '盤上にいる間は自軍の王を8方向2マスへ強化する。失うと王は前1しか動けない永続呪いを受ける。' },
   { id: 'chinojoou', name: '血の女王', kanji: '血后', rarity: 'forbidden', aiValue: 2400, moves: [{ type: 'slide', dirs: DIAG }, { type: 'step', dirs: [L, R] }], chainOnCapture: true, chainCostsHand: true, desc: '斜めに何マスでも、横に1マス動ける。捕獲時、持ち駒1枚を供物に捧げると続けてもう1回移動できる。' },

@@ -41,6 +41,7 @@ export function loadRun(storage: StorageLike = browserStorage()): RunState | nul
   const legacyGame = run.game as RunState['game'] & {
     graveyard?: { defId: string; promoted: boolean }[];
     cursedKing?: { player?: boolean; enemy?: boolean };
+    stolen?: string[];
   };
   return {
     ...run,
@@ -51,6 +52,7 @@ export function loadRun(storage: StorageLike = browserStorage()): RunState | nul
         player: legacyGame.cursedKing?.player === true,
         enemy: legacyGame.cursedKing?.enemy === true,
       },
+      stolen: Array.isArray(legacyGame.stolen) ? legacyGame.stolen : [],
     },
   };
 }

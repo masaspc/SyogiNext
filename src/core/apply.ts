@@ -47,7 +47,14 @@ function vanish(s: GameState, sq: number): void {
   removeFromBoard(s, sq, true);
 }
 
-function createPiece(s: GameState, defId: string, owner: Owner, promoted = false, autoCount?: number): Piece {
+function createPiece(
+  s: GameState,
+  defId: string,
+  owner: Owner,
+  promoted = false,
+  autoCount?: number,
+  conjured = false,
+): Piece {
   const d = def(defId);
   return {
     id: s.nextPieceId++,
@@ -56,6 +63,7 @@ function createPiece(s: GameState, defId: string, owner: Owner, promoted = false
     promoted,
     ...(d.active ? { usesLeft: d.active.uses } : {}),
     ...(autoCount !== undefined ? { autoCount } : {}),
+    ...(conjured ? { conjured: true } : {}),
   };
 }
 
@@ -117,6 +125,8 @@ function resolveCapture(s: GameState, attacker: Piece, target: Piece, to: number
   } else if (effect === 'bomb') {
     removeFromBoard(s, to, true, target, false);
     explode(s, to);
+  } else if (target.conjured) {
+    removeFromBoard(s, to, true, target, false);
   } else if (def(target.defId).isNormal) {
     removeFromBoard(s, to, false, target, false);
     // 通常駒: 生駒として持ち駒へ(成りはpromotedフラグなのでdefIdそのまま)
@@ -193,7 +203,7 @@ function resolveBoardMove(s: GameState, m: Extract<Move, { kind: 'move' }>): voi
   }
   const leave = moved && effectiveDef(moved).leaveBehind;
   if (moved && leave && !s.board[m.from]) {
-    s.board[m.from] = createPiece(s, leave.defId, moved.owner);
+    s.board[m.from] = createPiece(s, leave.defId, moved.owner, false, undefined, true);
     s.events.push({ t: 'spawn', sq: m.from, defId: leave.defId });
   }
   if (moved && effectiveDef(moved).doomsday) {
@@ -320,10 +330,10 @@ function resolveAutomaticActions(s: GameState, mover: Owner): void {
       if (auto.kind === 'spawn') {
         const sequenceIndex = (p.autoCount! / auto.every - 1) % auto.sequence.length;
         const next = auto.sequence[sequenceIndex];
-        s.board[targetSq] = createPiece(s, next.defId, mover, next.promoted ?? false);
+        s.board[targetSq] = createPiece(s, next.defId, mover, next.promoted ?? false, undefined, true);
         s.events.push({ t: 'spawn', sq: targetSq, defId: next.defId });
       } else {
-        s.board[targetSq] = createPiece(s, p.defId, mover, p.promoted, 0);
+        s.board[targetSq] = createPiece(s, p.defId, mover, p.promoted, 0, true);
         s.events.push({ t: 'spawn', sq: targetSq, defId: p.defId });
       }
     } else if (auto.kind === 'devour') {
@@ -361,7 +371,7 @@ function resolveAutomaticActions(s: GameState, mover: Owner): void {
       if (!oldest || !empties.length) continue;
       const targetSq = pickAndUpdate(s, empties);
       s.graveyard.shift();
-      s.board[targetSq] = createPiece(s, oldest.defId, mover, oldest.promoted);
+      s.board[targetSq] = createPiece(s, oldest.defId, mover, oldest.promoted, undefined, true);
       s.events.push({ t: 'resurrect', sq: targetSq, defId: oldest.defId });
     } else if (auto.kind === 'swapChaos') {
       const enemies = s.board.flatMap((target, sq) => target && target.owner !== mover && !isRoyalPiece(target) ? [sq] : []);
@@ -412,6 +422,7 @@ export function applyMove(state: GameState, move: Move): GameState {
     petrified: { ...state.petrified },
     graveyard: state.graveyard.slice(),
     cursedKing: { ...state.cursedKing },
+    stolen: (state.stolen ?? []).slice(),
     events: [],
   };
   const mover = s.turn;
