@@ -13,11 +13,11 @@ function moveOrderScore(state: GameState, move: Move): number {
   if (move.kind === 'drop') return 0;
   if (move.kind === 'active') {
     const target = state.board[move.target];
-    if (['bolt', 'ohabari', 'timestop', 'execute', 'apocalypse'].includes(move.ability)) return 800;
+    if (['bolt', 'ohabari', 'timestop', 'execute', 'apocalypse', 'shockwave', 'boardFlip'].includes(move.ability)) return 800;
     return move.ability === 'snipe' && target ? effectiveDef(target).aiValue : 10;
   }
   let score = 0;
-  for (const sq of [move.to, move.second, move.chain]) {
+  for (const sq of [move.to, move.second, move.chain, move.chain2, move.escort?.to]) {
     if (sq == null) continue;
     const target = state.board[sq];
     if (target && target.owner !== state.turn) score += effectiveDef(target).aiValue;

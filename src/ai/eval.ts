@@ -2,7 +2,7 @@ import { attacked } from '../core/apply';
 import { findRoyals } from '../core/board';
 import { def, effectiveDef } from '../core/defs';
 import type { GameState, Owner } from '../core/types';
-import { rowOf } from '../core/types';
+import { colOf, rowOf } from '../core/types';
 
 const opponent = (owner: Owner): Owner => (owner === 'player' ? 'enemy' : 'player');
 
@@ -18,6 +18,11 @@ export function evaluate(state: GameState, pov: Owner, rngTick: number): number 
     const pieceDef = effectiveDef(piece);
     score += sign * (pieceDef.aiValue + progress * 2);
     if (pieceDef.doomsday) score += sign * progress * 300;
+    if (pieceDef.throne) {
+      const centerDistance = Math.abs(rowOf(sq) - 4) + Math.abs(colOf(sq) - 4);
+      score += sign * ((piece.throneCount ?? 0) * 1200 + (8 - centerDistance) * 40);
+    }
+    if (pieceDef.absorbMoves) score += sign * (piece.absorbed?.length ?? 0) * 300;
   }
   for (const owner of ['player', 'enemy'] as Owner[]) {
     const sign = owner === pov ? 1 : -1;

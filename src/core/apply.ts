@@ -102,6 +102,14 @@ function resolveCapture(s: GameState, attacker: Piece, target: Piece, to: number
     }
     return;
   }
+  if (effectiveDef(attacker).absorbMoves) {
+    const absorbed = new Set(attacker.absorbed ?? []);
+    if (!absorbed.has(target.defId)) {
+      absorbed.add(target.defId);
+      attacker.absorbed = [...absorbed];
+      s.events.push({ t: 'absorb', sq: to, defId: target.defId });
+    }
+  }
   if (effectiveDef(attacker).stealOnCapture && attacker.owner === 'player' && def(target.defId).rarity) {
     s.stolen.push(target.defId);
     s.events.push({ t: 'steal', sq: to, defId: target.defId });
@@ -204,6 +212,19 @@ function resolveBoardMove(s: GameState, m: Extract<Move, { kind: 'move' }>): voi
     if (t && t.owner !== moved.owner && !isRoyalPiece(t) && !isWarded(s, m.petrify)) {
       s.petrified[t.id] = 1;
       s.events.push({ t: 'petrify', sq: m.petrify, defId: t.defId });
+    }
+  }
+  if (moved && m.escort && s.board[finalSq] === moved) {
+    const escort = s.board[m.escort.from];
+    const stillAdjacent = ADJ[finalSq].includes(m.escort.from);
+    const oneStep = Math.max(
+      Math.abs(rowOf(m.escort.to) - rowOf(m.escort.from)),
+      Math.abs(colOf(m.escort.to) - colOf(m.escort.from)),
+    ) === 1;
+    if (escort && escort.owner === moved.owner && !isRoyalPiece(escort) && stillAdjacent && oneStep) {
+      const escorted = moveStep(s, m.escort.from, m.escort.to);
+      s.events.push({ t: 'escort', sq: m.escort.to, defId: escort.defId });
+      if (s.winner || !escorted) return;
     }
   }
   // 成り(§3.3)
@@ -333,6 +354,32 @@ function resolveActive(s: GameState, m: Extract<Move, { kind: 'active' }>): void
     });
     for (const targetSq of victims) removeFromBoard(s, targetSq, true);
     s.events.push({ t: 'smite', sq: m.target, defId: p.defId });
+  } else if (m.ability === 'shockwave') {
+    const dr = Math.sign(rowOf(m.target) - rowOf(m.from));
+    const dc = Math.sign(colOf(m.target) - colOf(m.from));
+    const ray: number[] = [];
+    let row = rowOf(m.from) + dr;
+    let col = colOf(m.from) + dc;
+    while (onBoard(row, col)) {
+      ray.push(sqOf(row, col));
+      row += dr;
+      col += dc;
+    }
+    for (let i = ray.length - 1; i >= 0; i--) {
+      const source = ray[i];
+      const target = s.board[source];
+      if (!target || target.owner === p.owner || isRoyalPiece(target) || isWarded(s, source)) continue;
+      let destination = source;
+      for (let j = i + 1; j < ray.length && !s.board[ray[j]]; j++) destination = ray[j];
+      if (destination !== source) {
+        s.board[destination] = target;
+        s.board[source] = null;
+      }
+    }
+    s.events.push({ t: 'shockwave', sq: m.target, defId: p.defId });
+  } else if (m.ability === 'boardFlip') {
+    s.board = s.board.slice().reverse();
+    s.events.push({ t: 'flip', sq: 80 - m.from, defId: p.defId });
   }
 }
 
@@ -467,6 +514,49 @@ function resolveAutomaticActions(s: GameState, mover: Owner): void {
   }
 }
 
+function resolveCounters(s: GameState, mover: Owner): void {
+  const counterOwner = opponent(mover);
+  const actors = s.board
+    .map((piece, sq) => ({ piece, sq }))
+    .filter(({ piece }) => piece && piece.owner === counterOwner && effectiveDef(piece).counter)
+    .map(({ piece, sq }) => ({ id: piece!.id, sq }));
+  for (const actor of actors) {
+    const currentSq = s.board.findIndex((piece) => piece?.id === actor.id);
+    const counter = currentSq >= 0 ? s.board[currentSq] : null;
+    if (!counter || counter.owner !== counterOwner || isImmobilized(s, currentSq, counter)) continue;
+    const captures = pieceMoves(s, currentSq)
+      .filter((move): move is Extract<Move, { kind: 'move' }> => {
+        if (move.kind !== 'move') return false;
+        const target = s.board[move.to];
+        return !!target && target.owner === mover && !isRoyalPiece(target);
+      })
+      .sort((a, b) => {
+        const valueDiff = effectiveDef(s.board[b.to]!).aiValue - effectiveDef(s.board[a.to]!).aiValue;
+        return valueDiff || a.to - b.to;
+      });
+    const chosen = captures[0];
+    if (!chosen) continue;
+    resolveBoardMove(s, { kind: 'move', from: currentSq, to: chosen.to, promote: false });
+    s.events.push({ t: 'counter', sq: chosen.to, defId: counter.defId });
+    if (s.winner) return;
+  }
+}
+
+function resolveThrones(s: GameState, mover: Owner): void {
+  const throneSq = sqOf(4, 4);
+  for (let sq = 0; sq < 81; sq++) {
+    const piece = s.board[sq];
+    if (!piece || piece.owner !== mover || !effectiveDef(piece).throne) continue;
+    const updated: Piece = { ...piece, throneCount: sq === throneSq ? (piece.throneCount ?? 0) + 1 : 0 };
+    s.board[sq] = updated;
+    if ((updated.throneCount ?? 0) >= 3) {
+      s.winner = mover;
+      s.events.push({ t: 'throne', sq, defId: piece.defId });
+      return;
+    }
+  }
+}
+
 // ボスの回避ワープ(§7.5): playerの手の完全解決後、利きに入っていたら安全な隣接空きマスへ
 function bossDodge(s: GameState): void {
   for (let sq = 0; sq < 81; sq++) {
@@ -516,6 +606,8 @@ export function applyMove(state: GameState, move: Move): GameState {
     resolveBoardMove(s, move);
   }
   if (!s.winner) resolveAutomaticActions(s, mover);
+  if (!s.winner) resolveCounters(s, mover);
+  if (!s.winner) resolveThrones(s, mover);
   // 手番を終えた側の石化解除(§7.10: 相手の次の手番の間=その駒の持ち主の手番が1回経過)
   for (const idStr of Object.keys(s.petrified)) {
     const id = Number(idStr);

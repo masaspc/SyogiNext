@@ -2,8 +2,8 @@
 // 方向ベクトル[dy,dx]は常に「その駒の持ち主から見た向き」(dy=-1が前)。enemyはエンジンがdyを反転する。
 
 export type Owner = 'player' | 'enemy';
-export type Rarity = 'common' | 'uncommon' | 'rare' | 'mythic' | 'celestial' | 'forbidden';
-export type ActiveKind = 'warp' | 'kingSwap' | 'snipe' | 'convert' | 'bolt' | 'gale' | 'timestop' | 'execute' | 'ohabari' | 'apocalypse' | 'smite';
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'mythic' | 'celestial' | 'forbidden' | 'transcendent';
+export type ActiveKind = 'warp' | 'kingSwap' | 'snipe' | 'convert' | 'bolt' | 'gale' | 'timestop' | 'execute' | 'ohabari' | 'apocalypse' | 'smite' | 'shockwave' | 'boardFlip';
 
 export interface Piece {
   id: number;
@@ -14,10 +14,12 @@ export interface Piece {
   revived?: boolean; // 不死鳥: 復活済みか
   autoCount?: number; // 自動行動の経過手番数
   conjured?: boolean; // エンジンが顕現させた駒。捕獲されても持ち駒にならない
+  throneCount?: number; // 天下人が5五で迎えた自分の手番終了回数
+  absorbed?: string[]; // 写し身が永続習得した基礎駒defId
 }
 
 export type GameEvent =
-  | { t: 'capture' | 'vanish' | 'explode' | 'revive' | 'warp' | 'petrify' | 'convert' | 'pull' | 'snipe' | 'swap' | 'bolt' | 'gale' | 'timestop' | 'execute' | 'devour' | 'spawn' | 'resurrect' | 'sacrifice' | 'doomsday' | 'apocalypse' | 'curse' | 'steal' | 'smite'; sq: number; defId: string }
+  | { t: 'capture' | 'vanish' | 'explode' | 'revive' | 'warp' | 'petrify' | 'convert' | 'pull' | 'snipe' | 'swap' | 'bolt' | 'gale' | 'timestop' | 'execute' | 'devour' | 'spawn' | 'resurrect' | 'sacrifice' | 'doomsday' | 'apocalypse' | 'curse' | 'steal' | 'smite' | 'throne' | 'counter' | 'shockwave' | 'flip' | 'absorb' | 'escort'; sq: number; defId: string }
   | { t: 'win'; who: Owner };
 
 export interface GameState {
@@ -40,7 +42,7 @@ export type Dir = readonly [number, number]; // [dy, dx] 持ち主視点
 
 export type MovePattern =
   | { type: 'step'; dirs: readonly Dir[] }
-  | { type: 'slide'; dirs: readonly Dir[]; max?: number; pierce?: number }
+  | { type: 'slide'; dirs: readonly Dir[]; max?: number; pierce?: number; wrap?: boolean }
   | { type: 'jump'; offsets: readonly Dir[] }
   | { type: 'lion' };
 
@@ -88,6 +90,11 @@ export interface PieceDef {
   kingBoon?: boolean; // 契約の魔神: 王を強化し、除去時に呪う
   stealOnCapture?: boolean; // 酒呑童子: 特殊駒をラン報酬として強奪
   infiniteUses?: boolean; // 常世神: 自軍アクティブ能力の使用回数を減らさない
+  counter?: boolean; // 後の先: 相手手番終了時に利き内の最高価値駒を捕獲
+  foresight?: boolean; // 未来視: UIに敵AIの狙いを表示
+  absorbMoves?: boolean; // 写し身: 捕獲した駒の動きを合成
+  throne?: boolean; // 天下人: 5五で3手番終了すると勝利
+  escortAfterMove?: boolean; // 軍師: 移動後に隣接味方を1歩動かす
 }
 
 export type Move =
@@ -101,6 +108,7 @@ export type Move =
       chain2?: number | null; // 修羅の二段目追撃先
       pull?: { target: number; to: number } | null; // 磁将
       petrify?: number | null; // 石化の魔女(対象マス)
+      escort?: { from: number; to: number } | null; // 軍師の連携移動
     }
   | { kind: 'drop'; defId: string; to: number }
   | { kind: 'active'; from: number; ability: ActiveKind; target: number }

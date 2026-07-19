@@ -116,7 +116,19 @@ const FORBIDDEN: PieceDef[] = [
   { id: 'tokoyo', name: '常世神', kanji: '常世', rarity: 'forbidden', aiValue: 2800, moves: [{ type: 'step', dirs: ALL8 }], infiniteUses: true, desc: '8方向に1マス動ける。盤上にいる間、自軍の全アクティブ能力の使用回数が減らず使い放題になる。' },
 ];
 
-export const SPECIAL_DEFS: PieceDef[] = [...COMMONS, ...UNCOMMONS, ...RARES, ...MYTHICS, ...CELESTIALS, ...FORBIDDEN];
+// ===== 超越レア =====
+const TRANSCENDENTS: PieceDef[] = [
+  { id: 'rinne', name: '輪廻', kanji: '輪廻', rarity: 'transcendent', aiValue: 2800, moves: [{ type: 'slide', dirs: ORTH, wrap: true }], desc: '盤の果てなど無い。縦横の端を越えると反対側へ抜け、最大8マス走り続ける。' },
+  { id: 'tenkabito', name: '天下人', kanji: '天下', rarity: 'transcendent', aiValue: 2400, moves: [{ type: 'step', dirs: ALL8 }], throne: true, desc: '王を取らずとも天下は獲れる。5五で自分の手番終了を3回迎えると即座に勝利する。' },
+  { id: 'utsushimi', name: '写し身', kanji: '写身', rarity: 'transcendent', aiValue: 2200, moves: [{ type: 'step', dirs: ALL8 }], absorbMoves: true, desc: '駒の動きは不変ではない。敵を捕獲するたび、その基礎駒の動きを永続習得して合体する。' },
+  { id: 'hadou', name: '波動', kanji: '波動', rarity: 'transcendent', aiValue: 2600, moves: [{ type: 'slide', dirs: ORTH, max: 2 }], active: { kind: 'shockwave', uses: 2 }, desc: '縦横に2マスまで動ける。波動球を2回使い、選んだ8方向の敵非ロイヤルを盤端へ押し詰める。' },
+  { id: 'gonosen', name: '後の先', kanji: '後先', rarity: 'transcendent', aiValue: 3000, moves: [{ type: 'step', dirs: ALL8 }], counter: true, desc: '敵の手番にも静止しない。敵手番終了時、利きにいる最高価値の敵非ロイヤル1体を自動で捕獲する。' },
+  { id: 'gunshi', name: '軍師', kanji: '軍師', rarity: 'transcendent', aiValue: 2600, moves: [{ type: 'slide', dirs: ALL8, max: 2 }], escortAfterMove: true, desc: '1手に動かせる駒は1枚ではない。移動後、隣接する味方非ロイヤル1体を続けて1マス動かせる。' },
+  { id: 'tenchigaeshi', name: '天地返し', kanji: '天地', rarity: 'transcendent', aiValue: 2000, moves: [{ type: 'step', dirs: ALL8 }], active: { kind: 'boardFlip', uses: 1 }, desc: '盤面は不動ではない。天地返しを1回使い、所有権や状態を保ったまま盤全体を180度回転する。' },
+  { id: 'miraishi', name: '未来視', kanji: '未来', rarity: 'transcendent', aiValue: 1800, moves: [{ type: 'slide', dirs: DIAG }], foresight: true, desc: '相手の考えは隠せない。盤上にいる間、敵が狙う最善手を矢印で予告する。' },
+];
+
+export const SPECIAL_DEFS: PieceDef[] = [...COMMONS, ...UNCOMMONS, ...RARES, ...MYTHICS, ...CELESTIALS, ...FORBIDDEN, ...TRANSCENDENTS];
 
 // UI用: プレイヤーが獲得できる駒(成り形は除く)
 export function obtainableIds(): string[] {

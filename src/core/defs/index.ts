@@ -17,6 +17,7 @@ export function def(id: string): PieceDef {
 
 // promotesTo:'gold' の駒: 動きだけ金になり、能力(フック)は保持した合成defを返す
 const goldCache: Record<string, PieceDef> = {};
+const absorbedCache: Record<string, PieceDef> = {};
 
 function goldPromoted(base: PieceDef): PieceDef {
   let g = goldCache[base.id];
@@ -38,8 +39,21 @@ function goldPromoted(base: PieceDef): PieceDef {
 // その駒の「現在の」定義(成り考慮)
 export function effectiveDef(p: Piece): PieceDef {
   const base = def(p.defId);
-  if (!p.promoted) return base;
-  if (!base.promotesTo) return base;
-  if (base.promotesTo === 'gold') return goldPromoted(base);
-  return def(base.promotesTo);
+  let current = base;
+  if (p.promoted && base.promotesTo) {
+    current = base.promotesTo === 'gold' ? goldPromoted(base) : def(base.promotesTo);
+  }
+  if (!base.absorbMoves || !p.absorbed?.length) return current;
+  const absorbed = [...new Set(p.absorbed)].sort();
+  const key = `${base.id}:${p.promoted ? '1' : '0'}:${absorbed.join(',')}`;
+  let composite = absorbedCache[key];
+  if (!composite) {
+    composite = {
+      ...current,
+      id: key,
+      moves: [...current.moves, ...absorbed.flatMap((id) => def(id).moves)],
+    };
+    absorbedCache[key] = composite;
+  }
+  return composite;
 }

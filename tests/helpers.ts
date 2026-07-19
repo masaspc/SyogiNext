@@ -25,7 +25,7 @@ export function put(
   sq: number,
   defId: string,
   owner: Owner,
-  opts: Partial<Pick<Piece, 'promoted' | 'usesLeft' | 'revived' | 'autoCount' | 'conjured'>> = {},
+  opts: Partial<Pick<Piece, 'promoted' | 'usesLeft' | 'revived' | 'autoCount' | 'conjured' | 'throneCount' | 'absorbed'>> = {},
 ): Piece {
   const d = def(defId);
   const p: Piece = {
@@ -37,6 +37,8 @@ export function put(
     ...(opts.revived !== undefined ? { revived: opts.revived } : {}),
     ...(opts.autoCount !== undefined ? { autoCount: opts.autoCount } : {}),
     ...(opts.conjured !== undefined ? { conjured: opts.conjured } : {}),
+    ...(opts.throneCount !== undefined ? { throneCount: opts.throneCount } : {}),
+    ...(opts.absorbed !== undefined ? { absorbed: opts.absorbed } : {}),
   };
   if (opts.usesLeft !== undefined) p.usesLeft = opts.usesLeft;
   state.board[sq] = p;

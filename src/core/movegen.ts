@@ -11,6 +11,13 @@ function translate(sq: number, dir: Dir, owner: Owner): number | null {
   return onBoard(r, c) ? sqOf(r, c) : null;
 }
 
+function translateWrapped(sq: number, dir: Dir, owner: Owner): number {
+  const s = owner === 'player' ? 1 : -1;
+  const r = (rowOf(sq) + dir[0] * s + 9) % 9;
+  const c = (colOf(sq) + dir[1] * s + 9) % 9;
+  return sqOf(r, c);
+}
+
 export function isRoyalPiece(p: Piece): boolean {
   return !!effectiveDef(p).isRoyal;
 }
@@ -77,8 +84,8 @@ function destsBasic(state: GameState, sq: number, p: Piece, d: PieceDef): { to: 
       for (const dir of pat.dirs) {
         let cur = sq;
         let pierceLeft = pat.pierce ?? 0;
-        for (let step = 0; step < (pat.max ?? 8); step++) {
-          const to = translate(cur, dir, p.owner);
+        for (let step = 0; step < Math.min(pat.max ?? 8, 8); step++) {
+          const to = pat.wrap ? translateWrapped(cur, dir, p.owner) : translate(cur, dir, p.owner);
           if (to === null) break;
           const occ = state.board[to];
           if (!occ) {
@@ -109,6 +116,7 @@ function destsBasic(state: GameState, sq: number, p: Piece, d: PieceDef): { to: 
 export function hasAnyDest(d: PieceDef, owner: Owner, sq: number): boolean {
   for (const pat of d.moves) {
     if (pat.type === 'lion') return true;
+    if (pat.type === 'slide' && pat.wrap) return true;
     const dirs = pat.type === 'jump' ? pat.offsets : pat.dirs;
     for (const dir of dirs) {
       if (translate(sq, dir, owner) !== null) return true;
@@ -180,9 +188,54 @@ function pushMoveVariants(state: GameState, moves: Move[], p: Piece, d: PieceDef
         moves.push({ ...baseMove, petrify: a });
       }
     }
+  } else if (d.escortAfterMove) {
+    moves.push({ ...baseMove, escort: null });
+    const after = simulateMove(state, from, to);
+    for (const allySq of ADJ[to]) {
+      const ally = after.board[allySq];
+      if (!ally || ally.owner !== p.owner || isRoyalPiece(ally) || isImmobilized(after, allySq, ally)) continue;
+      const destinations = new Set(destsBasic(after, allySq, ally, effectiveDef(ally))
+        .filter(({ to: target, isJump }) => {
+          const occupant = after.board[target];
+          return Math.max(Math.abs(rowOf(target) - rowOf(allySq)), Math.abs(colOf(target) - colOf(allySq))) === 1
+            && (!occupant || captureAllowed(after, ally, allySq, target, isJump));
+        })
+        .map(({ to: target }) => target));
+      for (const escortTo of destinations) moves.push({ ...baseMove, escort: { from: allySq, to: escortTo } });
+    }
   } else {
     moves.push(baseMove);
   }
+}
+
+const SHOCKWAVE_DIRS: readonly Dir[] = [
+  [-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1],
+];
+
+function shockwaveWouldMove(state: GameState, from: number, owner: Owner, dir: Dir): boolean {
+  const board = state.board.slice();
+  const ray: number[] = [];
+  let row = rowOf(from) + dir[0];
+  let col = colOf(from) + dir[1];
+  while (onBoard(row, col)) {
+    ray.push(sqOf(row, col));
+    row += dir[0];
+    col += dir[1];
+  }
+  let moved = false;
+  for (let i = ray.length - 1; i >= 0; i--) {
+    const source = ray[i];
+    const piece = board[source];
+    if (!piece || piece.owner === owner || isRoyalPiece(piece) || isWarded({ ...state, board }, source)) continue;
+    let destination = source;
+    for (let j = i + 1; j < ray.length && !board[ray[j]]; j++) destination = ray[j];
+    if (destination !== source) {
+      board[destination] = piece;
+      board[source] = null;
+      moved = true;
+    }
+  }
+  return moved;
 }
 
 // 獅子(§6.4 M1): 8方向1マスを1手番に2回まで。二段目は停止(null)・帰還(=居食い)も可
@@ -287,6 +340,15 @@ function genActive(state: GameState, sq: number, p: Piece, d: PieceDef, moves: M
         moves.push({ kind: 'active', from: sq, ability: 'smite', target });
       }
     }
+  } else if (kind === 'shockwave') {
+    for (const dir of SHOCKWAVE_DIRS) {
+      const row = rowOf(sq) + dir[0];
+      const col = colOf(sq) + dir[1];
+      if (!onBoard(row, col) || !shockwaveWouldMove(state, sq, p.owner, dir)) continue;
+      moves.push({ kind: 'active', from: sq, ability: 'shockwave', target: sqOf(row, col) });
+    }
+  } else if (kind === 'boardFlip') {
+    if (state.board.filter(Boolean).length >= 2) moves.push({ kind: 'active', from: sq, ability: 'boardFlip', target: sq });
   }
 }
 
