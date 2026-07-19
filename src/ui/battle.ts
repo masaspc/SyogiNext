@@ -40,6 +40,7 @@ function eventText(event: GameEvent): string {
     convert: '寝返り', pull: '引き寄せ', snipe: '狙撃', swap: '入れ替え', bolt: '落雷', gale: '突風',
     timestop: '刻停', execute: '断罪', devour: '捕食', spawn: '生成',
     resurrect: '蘇生', sacrifice: '供物', doomsday: '下剋上', apocalypse: '終焉', curse: '呪い',
+    steal: '強奪', smite: '神罰',
   };
   return `${names[event.t]}: ${def(event.defId).name}`;
 }

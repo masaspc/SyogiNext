@@ -1,7 +1,7 @@
 import type { GameState, Move, Owner, Piece } from './types';
 import { ADJ, findRoyals } from './board';
 import { def, effectiveDef } from './defs';
-import { captureAllowed, isImmobilized, isRoyalPiece, pieceMoves } from './movegen';
+import { captureAllowed, hasInfiniteUses, isImmobilized, isRoyalPiece, isWarded, legalDropSquares, pieceMoves } from './movegen';
 import { pick } from './rng';
 import { inCamp } from './board';
 import { colOf, onBoard, rowOf, sqOf } from './types';
@@ -17,7 +17,7 @@ export function attacked(state: GameState, sq: number, by: Owner): boolean {
     const p = state.board[s];
     if (!p || p.owner !== by) continue;
     for (const m of pieceMoves(state, s)) {
-      if (m.kind === 'move' && (m.to === sq || m.second === sq || m.chain === sq)) return true;
+      if (m.kind === 'move' && (m.to === sq || m.second === sq || m.chain === sq || m.chain2 === sq)) return true;
     }
   }
   return false;
@@ -78,7 +78,7 @@ function explode(s: GameState, center: number): void {
     s.events.push({ t: 'explode', sq: c, defId: 'bomber' });
     for (const sq of [c, ...ADJ[c]]) {
       const v = s.board[sq];
-      if (!v || isRoyalPiece(v)) continue;
+      if (!v || isRoyalPiece(v) || isWarded(s, sq)) continue;
       const isBomb = effectiveDef(v).onCapturedEffects === 'bomb';
       removeFromBoard(s, sq, true);
       if (isBomb) queue.push(sq);
@@ -96,6 +96,12 @@ function resolveCapture(s: GameState, attacker: Piece, target: Piece, to: number
       s.winner = attacker.owner;
       s.events.push({ t: 'win', who: attacker.owner });
     }
+    return;
+  }
+  if (effectiveDef(attacker).stealOnCapture && attacker.owner === 'player' && def(target.defId).rarity) {
+    s.stolen.push(target.defId);
+    s.events.push({ t: 'steal', sq: to, defId: target.defId });
+    removeFromBoard(s, to, true, target, false);
     return;
   }
   const effect = tDef.onCapturedEffects;
@@ -174,10 +180,15 @@ function resolveBoardMove(s: GameState, m: Extract<Move, { kind: 'move' }>): voi
       if (s.winner) return;
     }
   }
+  if (moved && m.chain2 != null && s.board[finalSq] === moved) {
+    moved = moveStep(s, finalSq, m.chain2);
+    finalSq = m.chain2;
+    if (s.winner) return;
+  }
   // 磁将の引き寄せ(§6.3 R5)
   if (moved && m.pull) {
     const t = s.board[m.pull.target];
-    if (t && t.owner !== moved.owner && !isRoyalPiece(t) && !s.board[m.pull.to]) {
+    if (t && t.owner !== moved.owner && !isRoyalPiece(t) && !isWarded(s, m.pull.target) && !s.board[m.pull.to]) {
       s.board[m.pull.to] = t;
       s.board[m.pull.target] = null;
       s.events.push({ t: 'pull', sq: m.pull.to, defId: t.defId });
@@ -186,7 +197,7 @@ function resolveBoardMove(s: GameState, m: Extract<Move, { kind: 'move' }>): voi
   // 石化(§6.3 R8)
   if (moved && m.petrify != null) {
     const t = s.board[m.petrify];
-    if (t && t.owner !== moved.owner && !isRoyalPiece(t)) {
+    if (t && t.owner !== moved.owner && !isRoyalPiece(t) && !isWarded(s, m.petrify)) {
       s.petrified[t.id] = 1;
       s.events.push({ t: 'petrify', sq: m.petrify, defId: t.defId });
     }
@@ -198,7 +209,7 @@ function resolveBoardMove(s: GameState, m: Extract<Move, { kind: 'move' }>): voi
   if (moved && captured && captured.owner !== moved.owner && effectiveDef(moved).onCaptureAoE) {
     for (const around of ADJ[finalSq]) {
       const target = s.board[around];
-      if (target && target.owner !== moved.owner && !isRoyalPiece(target)) vanish(s, around);
+      if (target && target.owner !== moved.owner && !isRoyalPiece(target) && !isWarded(s, around)) vanish(s, around);
     }
   }
   const leave = moved && effectiveDef(moved).leaveBehind;
@@ -212,7 +223,7 @@ function resolveBoardMove(s: GameState, m: Extract<Move, { kind: 'move' }>): voi
     if (finalRow === enemyBackRank) {
       for (let targetSq = 0; targetSq < 81; targetSq++) {
         const target = s.board[targetSq];
-        if (target && target.owner !== moved.owner && !isRoyalPiece(target)) removeFromBoard(s, targetSq, true);
+        if (target && target.owner !== moved.owner && !isRoyalPiece(target) && !isWarded(s, targetSq)) removeFromBoard(s, targetSq, true);
       }
       s.events.push({ t: 'doomsday', sq: finalSq, defId: moved.defId });
     }
@@ -221,7 +232,10 @@ function resolveBoardMove(s: GameState, m: Extract<Move, { kind: 'move' }>): voi
 
 function resolveActive(s: GameState, m: Extract<Move, { kind: 'active' }>): void {
   const orig = s.board[m.from]!;
-  const p: Piece = { ...orig, usesLeft: (orig.usesLeft ?? 0) - 1 };
+  const p: Piece = {
+    ...orig,
+    usesLeft: hasInfiniteUses(s, orig.owner) ? orig.usesLeft : (orig.usesLeft ?? 0) - 1,
+  };
   s.board[m.from] = p;
   if (m.ability === 'warp') {
     s.board[m.target] = p;
@@ -234,18 +248,22 @@ function resolveActive(s: GameState, m: Extract<Move, { kind: 'active' }>): void
     s.events.push({ t: 'swap', sq: m.target, defId: p.defId });
   } else if (m.ability === 'snipe') {
     const t = s.board[m.target]!;
-    removeFromBoard(s, m.target, true);
-    s.events.push({ t: 'snipe', sq: m.target, defId: t.defId });
+    if (!isWarded(s, m.target)) {
+      removeFromBoard(s, m.target, true);
+      s.events.push({ t: 'snipe', sq: m.target, defId: t.defId });
+    }
   } else if (m.ability === 'convert') {
     const t = s.board[m.target]!;
-    s.board[m.target] = { ...t, owner: p.owner };
-    s.events.push({ t: 'convert', sq: m.target, defId: t.defId });
+    if (!isWarded(s, m.target)) {
+      s.board[m.target] = { ...t, owner: p.owner };
+      s.events.push({ t: 'convert', sq: m.target, defId: t.defId });
+    }
   } else if (m.ability === 'bolt') {
     const col = colOf(m.target);
     for (let row = 0; row < 9; row++) {
       const targetSq = sqOf(row, col);
       const target = s.board[targetSq];
-      if (target && target.owner !== p.owner && !isRoyalPiece(target)) vanish(s, targetSq);
+      if (target && target.owner !== p.owner && !isRoyalPiece(target) && !isWarded(s, targetSq)) vanish(s, targetSq);
     }
     s.events.push({ t: 'bolt', sq: m.target, defId: p.defId });
   } else if (m.ability === 'gale') {
@@ -254,7 +272,7 @@ function resolveActive(s: GameState, m: Extract<Move, { kind: 'active' }>): void
     for (let col = 0; col < 9; col++) {
       const targetSq = sqOf(row, col);
       const target = s.board[targetSq];
-      if (target && target.owner !== p.owner) targets.push(targetSq);
+      if (target && target.owner !== p.owner && !isWarded(s, targetSq)) targets.push(targetSq);
     }
     for (const targetSq of targets) {
       const target = s.board[targetSq];
@@ -268,20 +286,21 @@ function resolveActive(s: GameState, m: Extract<Move, { kind: 'active' }>): void
     }
     s.events.push({ t: 'gale', sq: m.target, defId: p.defId });
   } else if (m.ability === 'timestop') {
-    for (const target of s.board) {
-      if (target && target.owner !== p.owner && !isRoyalPiece(target)) s.petrified[target.id] = 1;
+    for (let targetSq = 0; targetSq < 81; targetSq++) {
+      const target = s.board[targetSq];
+      if (target && target.owner !== p.owner && !isRoyalPiece(target) && !isWarded(s, targetSq)) s.petrified[target.id] = 1;
     }
     s.events.push({ t: 'timestop', sq: m.from, defId: p.defId });
   } else if (m.ability === 'execute') {
     const target = s.board[m.target];
-    if (target && target.owner !== p.owner && !isRoyalPiece(target)) vanish(s, m.target);
+    if (target && target.owner !== p.owner && !isRoyalPiece(target) && !isWarded(s, m.target)) vanish(s, m.target);
     s.events.push({ t: 'execute', sq: m.target, defId: p.defId });
   } else if (m.ability === 'ohabari') {
     const centerRow = rowOf(m.from);
     const centerCol = colOf(m.from);
     for (let targetSq = 0; targetSq < 81; targetSq++) {
       const target = s.board[targetSq];
-      if (!target || target.owner === p.owner || isRoyalPiece(target)) continue;
+      if (!target || target.owner === p.owner || isRoyalPiece(target) || isWarded(s, targetSq)) continue;
       if (Math.max(Math.abs(rowOf(targetSq) - centerRow), Math.abs(colOf(targetSq) - centerCol)) <= 2) {
         vanish(s, targetSq);
       }
@@ -291,9 +310,15 @@ function resolveActive(s: GameState, m: Extract<Move, { kind: 'active' }>): void
     s.events.push({ t: 'apocalypse', sq: m.from, defId: p.defId });
     for (let targetSq = 0; targetSq < 81; targetSq++) {
       const target = s.board[targetSq];
-      if (target && !isRoyalPiece(target)) removeFromBoard(s, targetSq, true);
+      if (target && !isRoyalPiece(target) && !isWarded(s, targetSq)) removeFromBoard(s, targetSq, true);
     }
     s.hands = { player: {}, enemy: {} };
+  } else if (m.ability === 'smite') {
+    for (const targetSq of [m.target, ...ADJ[m.target]]) {
+      const target = s.board[targetSq];
+      if (target && !isRoyalPiece(target) && !isWarded(s, targetSq)) removeFromBoard(s, targetSq, true);
+    }
+    s.events.push({ t: 'smite', sq: m.target, defId: p.defId });
   }
 }
 
@@ -302,6 +327,10 @@ function pickAndUpdate<T>(s: GameState, items: readonly T[]): T {
   s.rngState = result.state;
   return result.value;
 }
+
+const DRAG_DIRS: readonly (readonly [number, number])[] = [
+  [-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1],
+];
 
 // 移動解決後、手番側が元から盤上にいた自動行動駒を盤面順に処理する。
 // フェーズ中に生成された駒は次の手番までカウントしない。
@@ -347,7 +376,7 @@ function resolveAutomaticActions(s: GameState, mover: Owner): void {
       if (!targets.length && auto.allyFallback) {
         targets = ADJ[currentSq].filter((sq) => {
           const target = s.board[sq];
-          return target && target.owner === mover && target.id !== p.id && !isRoyalPiece(target);
+          return target && target.owner === mover && target.id !== p.id && !isRoyalPiece(target) && !isWarded(s, sq);
         });
       }
       if (!targets.length) continue;
@@ -358,7 +387,7 @@ function resolveAutomaticActions(s: GameState, mover: Owner): void {
     } else if (auto.kind === 'corrupt') {
       const targets = ADJ[currentSq].filter((sq) => {
         const target = s.board[sq];
-        return target && target.owner !== mover && !isRoyalPiece(target) && !!def(target.defId).isNormal;
+        return target && target.owner !== mover && !isRoyalPiece(target) && !isWarded(s, sq) && !!def(target.defId).isNormal;
       });
       if (!targets.length) continue;
       const targetSq = pickAndUpdate(s, targets);
@@ -374,8 +403,8 @@ function resolveAutomaticActions(s: GameState, mover: Owner): void {
       s.board[targetSq] = createPiece(s, oldest.defId, mover, oldest.promoted, undefined, true);
       s.events.push({ t: 'resurrect', sq: targetSq, defId: oldest.defId });
     } else if (auto.kind === 'swapChaos') {
-      const enemies = s.board.flatMap((target, sq) => target && target.owner !== mover && !isRoyalPiece(target) ? [sq] : []);
-      const allies = s.board.flatMap((target, sq) => target && target.owner === mover && !isRoyalPiece(target) ? [sq] : []);
+      const enemies = s.board.flatMap((target, sq) => target && target.owner !== mover && !isRoyalPiece(target) && !isWarded(s, sq) ? [sq] : []);
+      const allies = s.board.flatMap((target, sq) => target && target.owner === mover && !isRoyalPiece(target) && !isWarded(s, sq) ? [sq] : []);
       if (!enemies.length || !allies.length) continue;
       const enemySq = pickAndUpdate(s, enemies);
       const allySq = pickAndUpdate(s, allies);
@@ -383,6 +412,43 @@ function resolveAutomaticActions(s: GameState, mover: Owner): void {
       s.board[enemySq] = s.board[allySq];
       s.board[allySq] = enemy;
       s.events.push({ t: 'swap', sq: enemySq, defId: p.defId });
+    } else if (auto.kind === 'autodrop') {
+      const handPieces = Object.entries(s.hands[mover]).flatMap(([defId, count]) => Array(count).fill(defId) as string[]);
+      if (!handPieces.length) continue;
+      const defId = pickAndUpdate(s, handPieces);
+      const squares = legalDropSquares(s, mover, defId).filter((sq) => inCamp(mover, sq));
+      if (!squares.length) continue;
+      const targetSq = pickAndUpdate(s, squares);
+      s.hands[mover][defId]--;
+      if (!s.hands[mover][defId]) delete s.hands[mover][defId];
+      s.board[targetSq] = createPiece(s, defId, mover);
+      s.events.push({ t: 'spawn', sq: targetSq, defId });
+    } else if (auto.kind === 'drag') {
+      const candidates: { target: number; to: number }[] = [];
+      for (const [dr, dc] of DRAG_DIRS) {
+        let row = rowOf(currentSq) + dr;
+        let col = colOf(currentSq) + dc;
+        let distance = 1;
+        while (onBoard(row, col)) {
+          const targetSq = sqOf(row, col);
+          const target = s.board[targetSq];
+          if (target) {
+            if (distance >= 2 && target.owner !== mover && !isRoyalPiece(target) && !isWarded(s, targetSq)) {
+              candidates.push({ target: targetSq, to: sqOf(rowOf(currentSq) + dr, colOf(currentSq) + dc) });
+            }
+            break;
+          }
+          row += dr;
+          col += dc;
+          distance++;
+        }
+      }
+      if (!candidates.length) continue;
+      const chosen = pickAndUpdate(s, candidates);
+      const target = s.board[chosen.target]!;
+      s.board[chosen.to] = target;
+      s.board[chosen.target] = null;
+      s.events.push({ t: 'pull', sq: chosen.to, defId: target.defId });
     }
   }
 }

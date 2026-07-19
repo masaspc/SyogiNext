@@ -107,6 +107,13 @@ const FORBIDDEN: PieceDef[] = [
   { id: 'majin', name: '契約の魔神', kanji: '契魔', rarity: 'forbidden', aiValue: 2600, moves: [{ type: 'slide', dirs: ORTH }, { type: 'slide', dirs: DIAG, max: 2 }], kingBoon: true, desc: '盤上にいる間は自軍の王を8方向2マスへ強化する。失うと王は前1しか動けない永続呪いを受ける。' },
   { id: 'chinojoou', name: '血の女王', kanji: '血后', rarity: 'forbidden', aiValue: 2400, moves: [{ type: 'slide', dirs: DIAG }, { type: 'step', dirs: [L, R] }], chainOnCapture: true, chainCostsHand: true, desc: '斜めに何マスでも、横に1マス動ける。捕獲時、持ち駒1枚を供物に捧げると続けてもう1回移動できる。' },
   { id: 'hoshikui', name: '星喰い', kanji: '星喰', rarity: 'forbidden', aiValue: 2200, moves: [{ type: 'jump', offsets: [[-2, 0], [2, 0], [0, -2], [0, 2], [-2, -2], [-2, 2], [2, -2], [2, 2]] }], active: { kind: 'apocalypse', uses: 1 }, desc: '8方向へ2マス跳ぶ。終焉を使うと自身を含む全非ロイヤル駒と両軍の持ち駒を消し去る。' },
+  { id: 'tenbatsu', name: '天罰', kanji: '天罰', rarity: 'forbidden', aiValue: 3000, moves: [{ type: 'slide', dirs: ORTH, max: 2 }], active: { kind: 'smite', uses: 2 }, desc: '縦横に2マスまで動ける。神罰を2回使い、任意の敵非ロイヤル駒と周囲3×3を敵味方無差別に消滅させる。' },
+  { id: 'fudomyoo', name: '不動明王', kanji: '不動', rarity: 'forbidden', aiValue: 2900, moves: [{ type: 'step', dirs: ORTH }], aura: 'ward', desc: '縦横に1マス動ける。隣接する味方非ロイヤル駒を捕獲とあらゆる能力から完全防護する(自身は守られない)。' },
+  { id: 'shuten', name: '酒呑童子', kanji: '酒呑', rarity: 'forbidden', aiValue: 2500, moves: [{ type: 'slide', dirs: DIAG }, { type: 'step', dirs: [L, R] }], stealOnCapture: true, desc: '斜めに何マスでも、横に1マス動ける。敵の特殊駒を捕獲すると強奪し、勝利後に自分の控えへ加える。' },
+  { id: 'shura', name: '修羅', kanji: '修羅', rarity: 'forbidden', aiValue: 3100, moves: [{ type: 'slide', dirs: ALL8, max: 2 }], chainOnCapture: 2, desc: '8方向に2マスまで動ける。敵を取るたび追加行動し、1手番に最大3枚まで狩れる。' },
+  { id: 'ubusuna', name: '産土神', kanji: '産土', rarity: 'forbidden', aiValue: 2600, moves: [{ type: 'step', dirs: ORTH }], auto: { kind: 'autodrop', every: 1 }, desc: '縦横に1マス動ける。毎手番、持ち駒1枚を0コストで自陣の合法なマスへ自動配置する。' },
+  { id: 'jorogumo', name: '絡新婦', kanji: '絡新', rarity: 'forbidden', aiValue: 2700, moves: [{ type: 'slide', dirs: DIAG, max: 2 }], auto: { kind: 'drag', every: 1 }, desc: '斜めに2マスまで動ける。毎手番、直線上で最寄りの敵非ロイヤル駒1体を自分の隣へ引きずり寄せる。' },
+  { id: 'tokoyo', name: '常世神', kanji: '常世', rarity: 'forbidden', aiValue: 2800, moves: [{ type: 'step', dirs: ALL8 }], infiniteUses: true, desc: '8方向に1マス動ける。盤上にいる間、自軍の全アクティブ能力の使用回数が減らず使い放題になる。' },
 ];
 
 export const SPECIAL_DEFS: PieceDef[] = [...COMMONS, ...UNCOMMONS, ...RARES, ...MYTHICS, ...CELESTIALS, ...FORBIDDEN];

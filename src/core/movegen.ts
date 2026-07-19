@@ -15,6 +15,22 @@ export function isRoyalPiece(p: Piece): boolean {
   return !!effectiveDef(p).isRoyal;
 }
 
+export function isWarded(state: GameState, sq: number): boolean {
+  const target = state.board[sq];
+  if (!target || isRoyalPiece(target)) return false;
+  return ADJ[sq].some((a) => {
+    const guardian = state.board[a];
+    return guardian
+      && guardian.owner === target.owner
+      && guardian.id !== target.id
+      && effectiveDef(guardian).aura === 'ward';
+  });
+}
+
+export function hasInfiniteUses(state: GameState, owner: Owner): boolean {
+  return state.board.some((piece) => piece && piece.owner === owner && effectiveDef(piece).infiniteUses);
+}
+
 export function isImmobilized(state: GameState, sq: number, piece: Piece | null = state.board[sq]): boolean {
   if (!piece) return false;
   if (state.petrified[piece.id]) return true;
@@ -116,13 +132,21 @@ function pushMoveVariants(state: GameState, moves: Move[], p: Piece, d: PieceDef
   const baseMove: Move = { kind: 'move', from, to, promote };
   if (d.chainOnCapture && captured) {
     moves.push({ ...baseMove, chain: null });
+    const chainLimit = d.chainOnCapture === true ? 1 : d.chainOnCapture;
     const canPay = !d.chainCostsHand || DROPPABLE.some((id) => (state.hands[p.owner][id] ?? 0) > 0);
     if (canPay) {
       const after = simulateMove(state, from, to);
       for (const { to: c, isJump } of destsBasic(after, to, p, d)) {
         const occ2 = after.board[c];
         if (occ2 && !captureAllowed(after, p, to, c, isJump)) continue;
-        moves.push({ ...baseMove, chain: c });
+        moves.push({ ...baseMove, chain: c, ...(chainLimit >= 2 ? { chain2: null } : {}) });
+        if (chainLimit < 2 || !occ2 || occ2.owner === p.owner) continue;
+        const after2 = simulateMove(after, to, c);
+        for (const { to: c2, isJump: jump2 } of destsBasic(after2, c, p, d)) {
+          const occ3 = after2.board[c2];
+          if (occ3 && !captureAllowed(after2, p, c, c2, jump2)) continue;
+          moves.push({ ...baseMove, chain: c, chain2: c2 });
+        }
       }
     }
   } else if (d.afterMoveChoice === 'magnetPull') {
@@ -139,7 +163,7 @@ function pushMoveVariants(state: GameState, moves: Move[], p: Piece, d: PieceDef
         dist++;
         const occ2 = after.board[cur];
         if (occ2) {
-          if (occ2.owner !== p.owner && !isRoyalPiece(occ2) && dist > 1) {
+          if (occ2.owner !== p.owner && !isRoyalPiece(occ2) && !isWarded(after, cur) && dist > 1) {
             const pullTo = sqOf(rowOf(cur) - dir[0], colOf(cur) - dir[1]);
             moves.push({ ...baseMove, pull: { target: cur, to: pullTo } });
           }
@@ -152,7 +176,7 @@ function pushMoveVariants(state: GameState, moves: Move[], p: Piece, d: PieceDef
     const after = simulateMove(state, from, to);
     for (const a of ADJ[to]) {
       const occ2 = after.board[a];
-      if (occ2 && occ2.owner !== p.owner && !isRoyalPiece(occ2)) {
+      if (occ2 && occ2.owner !== p.owner && !isRoyalPiece(occ2) && !isWarded(after, a)) {
         moves.push({ ...baseMove, petrify: a });
       }
     }
@@ -180,7 +204,7 @@ function genLion(state: GameState, sq: number, p: Piece, moves: Move[]): void {
 }
 
 function genActive(state: GameState, sq: number, p: Piece, d: PieceDef, moves: Move[]): void {
-  if (!d.active || !p.usesLeft || p.usesLeft <= 0) return;
+  if (!d.active || ((!p.usesLeft || p.usesLeft <= 0) && !hasInfiniteUses(state, p.owner))) return;
   const kind = d.active.kind;
   if (kind === 'warp') {
     for (let s = 0; s < 81; s++) {
@@ -201,14 +225,14 @@ function genActive(state: GameState, sq: number, p: Piece, d: PieceDef, moves: M
       cur = sqOf(r, c);
       const occ = state.board[cur];
       if (occ) {
-        if (occ.owner !== p.owner && !isRoyalPiece(occ)) moves.push({ kind: 'active', from: sq, ability: 'snipe', target: cur });
+        if (occ.owner !== p.owner && !isRoyalPiece(occ) && !isWarded(state, cur)) moves.push({ kind: 'active', from: sq, ability: 'snipe', target: cur });
         break; // 遮蔽(§6.3 R6)
       }
     }
   } else if (kind === 'convert') {
     for (const a of ADJ[sq]) {
       const occ = state.board[a];
-      if (occ && occ.owner !== p.owner && !isRoyalPiece(occ) && def(occ.defId).isNormal) {
+      if (occ && occ.owner !== p.owner && !isRoyalPiece(occ) && !isWarded(state, a) && def(occ.defId).isNormal) {
         moves.push({ kind: 'active', from: sq, ability: 'convert', target: a });
       }
     }
@@ -217,7 +241,7 @@ function genActive(state: GameState, sq: number, p: Piece, d: PieceDef, moves: M
       for (let row = 0; row < 9; row++) {
         const target = sqOf(row, col);
         const occ = state.board[target];
-        if (occ && occ.owner !== p.owner && !isRoyalPiece(occ)) {
+        if (occ && occ.owner !== p.owner && !isRoyalPiece(occ) && !isWarded(state, target)) {
           moves.push({ kind: 'active', from: sq, ability: 'bolt', target });
           break;
         }
@@ -228,7 +252,7 @@ function genActive(state: GameState, sq: number, p: Piece, d: PieceDef, moves: M
       for (let col = 0; col < 9; col++) {
         const target = sqOf(row, col);
         const occ = state.board[target];
-        if (!occ || occ.owner === p.owner) continue;
+        if (!occ || occ.owner === p.owner || isWarded(state, target)) continue;
         const backRow = row + (occ.owner === 'player' ? 1 : -1);
         if (onBoard(backRow, col) && !state.board[sqOf(backRow, col)]) {
           moves.push({ kind: 'active', from: sq, ability: 'gale', target });
@@ -237,12 +261,12 @@ function genActive(state: GameState, sq: number, p: Piece, d: PieceDef, moves: M
       }
     }
   } else if (kind === 'timestop') {
-    const hasTarget = state.board.some((occ) => occ && occ.owner !== p.owner && !isRoyalPiece(occ));
+    const hasTarget = state.board.some((occ, target) => occ && occ.owner !== p.owner && !isRoyalPiece(occ) && !isWarded(state, target));
     if (hasTarget) moves.push({ kind: 'active', from: sq, ability: 'timestop', target: sq });
   } else if (kind === 'execute') {
     for (let target = 0; target < 81; target++) {
       const occ = state.board[target];
-      if (occ && occ.owner !== p.owner && !isRoyalPiece(occ)) {
+      if (occ && occ.owner !== p.owner && !isRoyalPiece(occ) && !isWarded(state, target)) {
         moves.push({ kind: 'active', from: sq, ability: 'execute', target });
       }
     }
@@ -250,11 +274,19 @@ function genActive(state: GameState, sq: number, p: Piece, d: PieceDef, moves: M
     const hasTarget = state.board.some((occ, target) => occ
       && occ.owner !== p.owner
       && !isRoyalPiece(occ)
+      && !isWarded(state, target)
       && Math.max(Math.abs(rowOf(target) - rowOf(sq)), Math.abs(colOf(target) - colOf(sq))) <= 2);
     if (hasTarget) moves.push({ kind: 'active', from: sq, ability: 'ohabari', target: sq });
   } else if (kind === 'apocalypse') {
-    const hasTarget = state.board.some((occ, target) => target !== sq && occ && !isRoyalPiece(occ));
+    const hasTarget = state.board.some((occ, target) => target !== sq && occ && !isRoyalPiece(occ) && !isWarded(state, target));
     if (hasTarget) moves.push({ kind: 'active', from: sq, ability: 'apocalypse', target: sq });
+  } else if (kind === 'smite') {
+    for (let target = 0; target < 81; target++) {
+      const occ = state.board[target];
+      if (occ && occ.owner !== p.owner && !isRoyalPiece(occ) && !isWarded(state, target)) {
+        moves.push({ kind: 'active', from: sq, ability: 'smite', target });
+      }
+    }
   }
 }
 
@@ -290,18 +322,24 @@ function hasOwnPawnInCol(state: GameState, owner: Owner, col: number): boolean {
   return false;
 }
 
+export function legalDropSquares(state: GameState, owner: Owner, defId: string): number[] {
+  if (state.board.some((p) => p && p.owner !== owner && effectiveDef(p).banEnemyDrops)) return [];
+  const d = def(defId);
+  const squares: number[] = [];
+  for (let s = 0; s < 81; s++) {
+    if (state.board[s]) continue;
+    if (!hasAnyDest(d, owner, s)) continue;
+    if (defId === 'pawn' && hasOwnPawnInCol(state, owner, colOf(s))) continue;
+    squares.push(s);
+  }
+  return squares;
+}
+
 function genDrops(state: GameState, owner: Owner, moves: Move[]): void {
-  if (state.board.some((p) => p && p.owner !== owner && effectiveDef(p).banEnemyDrops)) return;
   const hand = state.hands[owner];
   for (const defId of Object.keys(hand)) {
     if (!hand[defId]) continue;
-    const d = def(defId);
-    for (let s = 0; s < 81; s++) {
-      if (state.board[s]) continue;
-      if (!hasAnyDest(d, owner, s)) continue; // 行き所のない打ち禁止
-      if (defId === 'pawn' && hasOwnPawnInCol(state, owner, colOf(s))) continue; // 二歩
-      moves.push({ kind: 'drop', defId, to: s });
-    }
+    for (const s of legalDropSquares(state, owner, defId)) moves.push({ kind: 'drop', defId, to: s });
   }
 }
 
@@ -319,6 +357,6 @@ export function legalMoves(state: GameState, owner: Owner): Move[] {
 // sqがbyの手で取られ得るか(王手警告・ボス回避用。§7.10: 石化駒の手は含まれない)
 export function isAttacked(state: GameState, sq: number, by: Owner): boolean {
   return legalMoves(state, by).some(
-    (m) => m.kind === 'move' && (m.to === sq || m.second === sq || m.chain === sq),
+    (m) => m.kind === 'move' && (m.to === sq || m.second === sq || m.chain === sq || m.chain2 === sq),
   );
 }

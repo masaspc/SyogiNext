@@ -18,6 +18,7 @@ function effectNames(events: GameEvent[]): string[] {
     petrify: '石化', convert: '寝返り', pull: '引寄', snipe: '狙撃', swap: '交換', win: '勝利',
     bolt: '落雷', gale: '突風', timestop: '刻停', execute: '断罪', devour: '捕食', spawn: '生成',
     resurrect: '蘇生', sacrifice: '供物', doomsday: '下剋上', apocalypse: '終焉', curse: '呪い',
+    steal: '強奪', smite: '神罰',
   };
   return [...new Set(events.map((event) => labels[event.t]).filter((label): label is string => !!label))];
 }
@@ -53,6 +54,7 @@ export function createMoveVisual(before: GameState, move: Move, after: GameState
       warp: 'ワープ', kingSwap: '王交換', snipe: '狙撃', convert: '寝返り', bolt: '落雷', gale: '突風',
       timestop: '刻停', execute: '断罪', ohabari: '十拳剣',
       apocalypse: '終焉',
+      smite: '神罰',
     } as const;
     return {
       origin: move.from,
@@ -61,7 +63,7 @@ export function createMoveVisual(before: GameState, move: Move, after: GameState
       historyLabel: `${actor}${pieceName} ${abilityNames[move.ability]}→${coord(move.target)}${suffix}`,
     };
   }
-  const destination = move.chain ?? move.second ?? move.to;
+  const destination = move.chain2 ?? move.chain ?? move.second ?? move.to;
   return {
     origin: move.from,
     destination,

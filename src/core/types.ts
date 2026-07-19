@@ -3,7 +3,7 @@
 
 export type Owner = 'player' | 'enemy';
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'mythic' | 'celestial' | 'forbidden';
-export type ActiveKind = 'warp' | 'kingSwap' | 'snipe' | 'convert' | 'bolt' | 'gale' | 'timestop' | 'execute' | 'ohabari' | 'apocalypse';
+export type ActiveKind = 'warp' | 'kingSwap' | 'snipe' | 'convert' | 'bolt' | 'gale' | 'timestop' | 'execute' | 'ohabari' | 'apocalypse' | 'smite';
 
 export interface Piece {
   id: number;
@@ -17,7 +17,7 @@ export interface Piece {
 }
 
 export type GameEvent =
-  | { t: 'capture' | 'vanish' | 'explode' | 'revive' | 'warp' | 'petrify' | 'convert' | 'pull' | 'snipe' | 'swap' | 'bolt' | 'gale' | 'timestop' | 'execute' | 'devour' | 'spawn' | 'resurrect' | 'sacrifice' | 'doomsday' | 'apocalypse' | 'curse'; sq: number; defId: string }
+  | { t: 'capture' | 'vanish' | 'explode' | 'revive' | 'warp' | 'petrify' | 'convert' | 'pull' | 'snipe' | 'swap' | 'bolt' | 'gale' | 'timestop' | 'execute' | 'devour' | 'spawn' | 'resurrect' | 'sacrifice' | 'doomsday' | 'apocalypse' | 'curse' | 'steal' | 'smite'; sq: number; defId: string }
   | { t: 'win'; who: Owner };
 
 export interface GameState {
@@ -66,7 +66,7 @@ export interface PieceDef {
   blockCapture?: (attacker: Piece, attackerDef: PieceDef, moveInfo: MoveInfo, target: Piece, state: GameState) => boolean;
   onCapturedEffects?: 'grudge' | 'bomb' | 'foxRevert' | 'phoenixRevive';
   onCaptureAoE?: boolean; // 死神: 捕獲後、周囲の敵非ロイヤルを消滅
-  aura?: 'guardian' | 'overlord'; // 軍神 / 覇王
+  aura?: 'guardian' | 'overlord' | 'ward'; // 軍神 / 覇王 / 不動明王
   active?: { kind: ActiveKind; uses: number };
   auto?:
     | { kind: 'spawn'; every: number; sequence: { defId: string; promoted?: boolean }[] }
@@ -74,16 +74,20 @@ export interface PieceDef {
     | { kind: 'devour'; every: number; allyFallback?: boolean }
     | { kind: 'corrupt'; every: number }
     | { kind: 'gate'; every: number }
-    | { kind: 'swapChaos'; every: number };
+    | { kind: 'swapChaos'; every: number }
+    | { kind: 'autodrop'; every: number }
+    | { kind: 'drag'; every: number };
   leaveBehind?: { defId: string };
   paralysisAura?: boolean;
   banEnemyDrops?: boolean;
   afterMoveChoice?: 'magnetPull' | 'petrify';
   dodge?: number; // 九尾2 / 覇王3
-  chainOnCapture?: boolean; // 影の刺客
+  chainOnCapture?: boolean | number; // 影の刺客 / 修羅
   chainCostsHand?: boolean; // 血の女王: 追撃前に持ち駒を供物にする
   doomsday?: boolean; // 下剋上: 敵陣最奥到達で敵軍を消滅
   kingBoon?: boolean; // 契約の魔神: 王を強化し、除去時に呪う
+  stealOnCapture?: boolean; // 酒呑童子: 特殊駒をラン報酬として強奪
+  infiniteUses?: boolean; // 常世神: 自軍アクティブ能力の使用回数を減らさない
 }
 
 export type Move =
@@ -94,6 +98,7 @@ export type Move =
       promote: boolean;
       second?: number | null; // 獅子の二段目(null=停止)
       chain?: number | null; // 影の刺客の追撃先
+      chain2?: number | null; // 修羅の二段目追撃先
       pull?: { target: number; to: number } | null; // 磁将
       petrify?: number | null; // 石化の魔女(対象マス)
     }
@@ -112,6 +117,7 @@ export interface RunState {
   phase: RunPhase;
   rewardOffer: string[] | null;
   rngState: number;
+  lastStolen?: string[]; // 直前の勝利で酒呑童子が強奪した駒
 }
 
 export interface Stats {

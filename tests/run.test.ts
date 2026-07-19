@@ -71,7 +71,7 @@ describe('ラン進行', () => {
     ]);
     expect(rewardWeightsFor(1).forbidden).toBe(0);
     expect(rewardWeightsFor(5).forbidden).toBe(5);
-    expect(obtainableIds().filter((id) => def(id).rarity === 'forbidden')).toHaveLength(7);
+    expect(obtainableIds().filter((id) => def(id).rarity === 'forbidden')).toHaveLength(14);
   });
 
   it('報酬候補は常に重複しない3枚になる', () => {

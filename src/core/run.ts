@@ -93,10 +93,12 @@ export function startBattle(run: RunState): RunState {
 
 export function onBattleEnd(run: RunState, winner: Owner): RunState {
   const state = run.game?.rngState ?? run.rngState;
-  if (winner === 'enemy') return { ...run, phase: 'gameover', rngState: state, rewardOffer: null };
-  if (run.stage === 15) return { ...run, phase: 'cleared', rngState: state, rewardOffer: null };
+  if (winner === 'enemy') return { ...run, phase: 'gameover', rngState: state, rewardOffer: null, lastStolen: [] };
+  const stolen = run.game?.stolen ?? [];
+  const roster = [...run.roster, ...stolen];
+  if (run.stage === 15) return { ...run, roster, phase: 'cleared', rngState: state, rewardOffer: null, lastStolen: stolen };
   const reward = rewardOffer(run.stage, state);
-  return { ...run, phase: 'reward', rngState: reward.state, rewardOffer: reward.offer };
+  return { ...run, roster, phase: 'reward', rngState: reward.state, rewardOffer: reward.offer, lastStolen: stolen };
 }
 
 export function takeReward(run: RunState, defId: string | null): RunState {
@@ -109,6 +111,7 @@ export function takeReward(run: RunState, defId: string | null): RunState {
     game: null,
     phase: 'formation',
     rewardOffer: null,
+    lastStolen: [],
   };
 }
 
