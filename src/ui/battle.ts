@@ -218,7 +218,8 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
     const status = document.createElement('div');
     status.className = `battle-status${thinking ? ' thinking' : ''}`;
     const inCheck = findRoyals(game(), 'player').some((sq) => isAttacked(game(), sq, 'enemy'));
-    status.innerHTML = `<strong>${thinking ? '敵の手番' : game().turn === 'player' ? 'あなたの手番' : '敵の手番'}</strong><span>${message}</span>${inCheck ? '<b>王手</b>' : ''}`;
+    const cursed = game().cursedKing.player;
+    status.innerHTML = `<strong>${thinking ? '敵の手番' : game().turn === 'player' ? 'あなたの手番' : '敵の手番'}</strong><span>${message}</span>${cursed ? '<b class="curse-warning">呪い: 王は前にしか進めない</b>' : ''}${inCheck ? '<b>王手</b>' : ''}`;
     screen.append(status);
 
     const enemyHand = document.createElement('div');

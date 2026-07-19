@@ -46,11 +46,20 @@ h2 { margin: 0; font-size: clamp(34px, 5vw, 58px); }
 .rarity-rare { --rarity: var(--gold); }
 .rarity-mythic { --rarity: var(--purple); }
 .rarity-celestial { --rarity: #8ff7ff; }
+.rarity-forbidden { --rarity: #c22536; }
 .codex-card[class*="rarity-"] { border-color: var(--rarity); box-shadow: inset 0 0 0 2px #3d2f22; }
 .codex-card.rarity-celestial, .reward-card.rarity-celestial, .roster-card.rarity-celestial {
   box-shadow: 0 0 10px #72f6ff, 0 0 24px #d980ff99, inset 0 0 0 2px #fff9;
   border-color: #c9fdff;
 }
+.codex-card.rarity-forbidden, .reward-card.rarity-forbidden, .roster-card.rarity-forbidden {
+  color: #f6e7df;
+  background: linear-gradient(145deg, #43151b, #13090b 68%);
+  border-color: #e23a4d;
+  box-shadow: 0 0 8px #e23a4dcc, 0 0 24px #510711, inset 0 0 0 2px #0a0203;
+  animation: forbidden-pulse 2.2s ease-in-out infinite;
+}
+@keyframes forbidden-pulse { 50% { box-shadow: 0 0 14px #ff5367, 0 0 34px #760815, inset 0 0 0 2px #1b0306; } }
 .codex-detail { position: sticky; top: 28px; border: 1px solid #65543e; border-top: 4px solid var(--rarity, #65543e); background: #241e18; padding: 22px; min-height: 320px; box-shadow: 0 16px 40px #0006; }
 .codex-detail.empty { display: grid; place-items: center; color: #8f8475; text-align: center; }
 .codex-detail h3 { font-size: 28px; margin: 14px 0 8px; }
@@ -64,6 +73,8 @@ h2 { margin: 0; font-size: clamp(34px, 5vw, 58px); }
 .piece-token::before, .piece-token::after { content: ""; position: absolute; clip-path: polygon(50% 0, 96% 20%, 88% 100%, 12% 100%, 4% 20%); }
 .piece-token::before { inset: 0; z-index: -2; background: var(--rarity, #5d3519); }
 .piece-token.rarity-celestial::before { background: conic-gradient(#9ffcff, #f8e97f, #f59adf, #a6a1ff, #9ffcff); }
+.piece-token.rarity-forbidden::before { background: linear-gradient(145deg, #fa334a, #2b0309 58%, #050102); animation: forbidden-token 1.8s ease-in-out infinite; }
+@keyframes forbidden-token { 50% { filter: brightness(1.45) drop-shadow(0 0 5px #ff233f); } }
 .piece-token::after { inset: 2px; z-index: -1; background: repeating-linear-gradient(96deg, #efd292 0 4px, #e7c57c 5px 8px, #d7ad66 9px 11px, #edcd8b 12px 17px); box-shadow: inset 0 8px 12px #fff4, inset -5px -7px 10px #8b551f42; }
 .piece-token.owner-enemy { transform: rotate(180deg); }
 .piece-token.promoted { color: #a3221c; }
@@ -76,6 +87,7 @@ h2 { margin: 0; font-size: clamp(34px, 5vw, 58px); }
 .battle-status strong { color: #e4c47f; }
 .battle-status span { color: #a99c8c; flex: 1; }
 .battle-status b { background: #9f2d24; padding: 5px 12px; letter-spacing: .1em; }
+.battle-status .curse-warning { background: #351017; color: #ff9aa7; border: 1px solid #a72435; font-size: 12px; letter-spacing: 0; }
 .battle-status.thinking strong::before { content: ""; display: inline-block; width: 10px; height: 10px; border: 2px solid #d1a341; border-top-color: transparent; border-radius: 50%; margin-right: 8px; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .battle-layout { display: grid; grid-template-columns: minmax(430px, 680px) minmax(230px, 1fr); gap: 24px; align-items: start; }
