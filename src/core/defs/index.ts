@@ -1,14 +1,13 @@
 import type { Piece, PieceDef } from '../types';
 import { GOLD_DIRS, NORMAL_DEFS } from './normal';
+import { SPECIAL_DEFS } from './special';
+import { BOSS_DEFS } from './boss';
 
 export { DROPPABLE } from './normal';
+export { obtainableIds } from './special';
 
 export const PIECE_DEFS: Record<string, PieceDef> = {};
-for (const d of NORMAL_DEFS) PIECE_DEFS[d.id] = d;
-
-export function registerDefs(defs: PieceDef[]): void {
-  for (const d of defs) PIECE_DEFS[d.id] = d;
-}
+for (const d of [...NORMAL_DEFS, ...SPECIAL_DEFS, ...BOSS_DEFS]) PIECE_DEFS[d.id] = d;
 
 export function def(id: string): PieceDef {
   const d = PIECE_DEFS[id];
