@@ -90,7 +90,7 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
   };
 
   const requestAiMove = async (): Promise<void> => {
-    if (disposed || thinking || game().turn !== 'enemy') return;
+    if (disposed || thinking || game().winner || game().turn !== 'enemy') return;
     thinking = true;
     message = '敵が思考しています…';
     render();
@@ -259,7 +259,14 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
   };
 
   render();
-  if (game().turn === 'enemy') void requestAiMove();
+  const resumedWinner = game().winner;
+  if (resumedWinner) {
+    window.setTimeout(() => {
+      if (!disposed) actions.onFinished(run, resumedWinner);
+    }, 0);
+  } else if (game().turn === 'enemy') {
+    void requestAiMove();
+  }
   return () => {
     disposed = true;
     worker?.terminate();
