@@ -15,13 +15,20 @@ export function evaluate(state: GameState, pov: Owner, rngTick: number): number 
     if (!piece) continue;
     const sign = piece.owner === pov ? 1 : -1;
     const progress = piece.owner === 'player' ? 8 - rowOf(sq) : rowOf(sq);
-    score += sign * (effectiveDef(piece).aiValue + progress * 2);
+    const pieceDef = effectiveDef(piece);
+    score += sign * (pieceDef.aiValue + progress * 2);
+    if (pieceDef.doomsday) score += sign * progress * 300;
   }
   for (const owner of ['player', 'enemy'] as Owner[]) {
     const sign = owner === pov ? 1 : -1;
     for (const [id, count] of Object.entries(state.hands[owner])) {
       score += sign * def(id).aiValue * count * 0.9;
     }
+    if (state.cursedKing[owner]) score -= sign * 800;
+    const hasGate = state.board.some((piece) => piece
+      && piece.owner === owner
+      && effectiveDef(piece).auto?.kind === 'gate');
+    if (hasGate) score += sign * state.graveyard.length * 40;
   }
   for (const royalSq of findRoyals(state, pov)) {
     if (attacked(state, royalSq, opponent(pov))) score -= 400;

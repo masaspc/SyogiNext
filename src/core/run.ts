@@ -10,11 +10,11 @@ type RewardWeights = Record<Rarity, number>;
 const REWARD_WEIGHTS: { from: number; to: number; weights: RewardWeights }[] = [
   { from: 1, to: 3, weights: { common: 1, uncommon: 14, rare: 45, mythic: 35, celestial: 5, forbidden: 0 } },
   { from: 4, to: 4, weights: { common: 1, uncommon: 9, rare: 40, mythic: 40, celestial: 10, forbidden: 0 } },
-  { from: 5, to: 5, weights: { common: 0, uncommon: 0, rare: 30, mythic: 50, celestial: 20, forbidden: 0 } },
+  { from: 5, to: 5, weights: { common: 0, uncommon: 0, rare: 28, mythic: 47, celestial: 20, forbidden: 5 } },
   { from: 6, to: 9, weights: { common: 1, uncommon: 7, rare: 32, mythic: 45, celestial: 15, forbidden: 0 } },
-  { from: 10, to: 10, weights: { common: 0, uncommon: 0, rare: 20, mythic: 50, celestial: 30, forbidden: 0 } },
-  { from: 11, to: 12, weights: { common: 1, uncommon: 4, rare: 25, mythic: 45, celestial: 25, forbidden: 0 } },
-  { from: 13, to: 14, weights: { common: 0, uncommon: 3, rare: 17, mythic: 45, celestial: 35, forbidden: 0 } },
+  { from: 10, to: 10, weights: { common: 0, uncommon: 0, rare: 18, mythic: 47, celestial: 28, forbidden: 7 } },
+  { from: 11, to: 12, weights: { common: 1, uncommon: 4, rare: 24, mythic: 43, celestial: 24, forbidden: 4 } },
+  { from: 13, to: 14, weights: { common: 0, uncommon: 3, rare: 15, mythic: 42, celestial: 32, forbidden: 8 } },
 ];
 
 const OBTAINABLE_BY_RARITY: Record<Rarity, string[]> = {

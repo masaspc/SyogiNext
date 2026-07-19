@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { loadCodex, loadRun, loadStats, recordCodex, recordResult, saveRun, type StorageLike } from '../src/storage';
 import { newRun } from '../src/core/run';
+import { startBattle } from '../src/core/run';
+import type { GameState } from '../src/core/types';
 
 class MemoryStorage implements StorageLike {
   readonly data = new Map<string, string>();
@@ -25,6 +27,18 @@ describe('storage', () => {
     expect(loadRun(storage)).toBeNull();
     storage.setItem('syoginext:run', JSON.stringify({ version: 99, data: newRun('normal', 1) }));
     expect(loadRun(storage)).toBeNull();
+  });
+
+  it('墓地と王の呪いがない旧対局セーブを既定値で補完する', () => {
+    const storage = new MemoryStorage();
+    const legacy = startBattle(newRun('normal', 7));
+    delete (legacy.game as Partial<GameState>).graveyard;
+    delete (legacy.game as Partial<GameState>).cursedKing;
+    saveRun(legacy, storage);
+    expect(loadRun(storage)?.game).toMatchObject({
+      graveyard: [],
+      cursedKing: { player: false, enemy: false },
+    });
   });
 
   it('図鑑は重複なしで蓄積する', () => {

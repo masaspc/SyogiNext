@@ -13,7 +13,7 @@ function moveOrderScore(state: GameState, move: Move): number {
   if (move.kind === 'drop') return 0;
   if (move.kind === 'active') {
     const target = state.board[move.target];
-    if (['bolt', 'ohabari', 'timestop', 'execute'].includes(move.ability)) return 800;
+    if (['bolt', 'ohabari', 'timestop', 'execute', 'apocalypse'].includes(move.ability)) return 800;
     return move.ability === 'snipe' && target ? effectiveDef(target).aiValue : 10;
   }
   let score = 0;

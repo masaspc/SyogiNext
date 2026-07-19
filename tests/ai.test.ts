@@ -5,6 +5,7 @@ import { findRoyals, newGame } from '../src/core/board';
 import { legalMoves } from '../src/core/movegen';
 import { sqOf } from '../src/core/types';
 import { bare, put } from './helpers';
+import { evaluate } from '../src/ai/eval';
 
 describe('AI探索', () => {
   it('1手で取れる敵王を必ず取る', () => {
@@ -53,5 +54,23 @@ describe('AI探索', () => {
     const next = applyMove(s, move);
     expect(next.turn).toBe('enemy');
     expect(next.moveCount).toBe(1);
+  });
+
+  it('下剋上の前進、王の呪い、墓地を持つ冥府の門を評価する', () => {
+    const back = bare();
+    put(back, sqOf(8, 4), 'gekokujo', 'player');
+    const forward = bare();
+    put(forward, sqOf(7, 4), 'gekokujo', 'player');
+    expect(evaluate(forward, 'player', 0) - evaluate(back, 'player', 0)).toBe(302);
+
+    const cursed = bare();
+    expect(evaluate({ ...cursed, cursedKing: { player: true, enemy: false } }, 'player', 0)
+      - evaluate(cursed, 'player', 0)).toBe(-800);
+
+    const gate = bare();
+    put(gate, sqOf(4, 4), 'meifu', 'player');
+    const emptyGrave = evaluate(gate, 'player', 0);
+    gate.graveyard = [{ defId: 'pawn', promoted: false }, { defId: 'lion', promoted: false }];
+    expect(evaluate(gate, 'player', 0) - emptyGrave).toBe(80);
   });
 });
