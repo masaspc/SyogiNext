@@ -24,6 +24,8 @@ describe('ステージデータ', () => {
     expect(enemySetupFor(10)[sqOf(0, 4)]).toBe('kyubi');
     expect(enemySetupFor(15)[sqOf(0, 4)]).toBe('haoh');
     expect(STAGES[12].enemySpecials).toContain('shinigami');
+    expect(STAGES[12].enemySpecials).toContain('tenbatsu');
+    expect(STAGES[12].enemySpecials).toContain('jorogumo');
     expect(STAGES[13].enemySpecials).toContain('raijin');
     expect(STAGES[14].enemySpecials).toContain('amaterasu');
     expect(STAGES[14].enemySpecials).toContain('maou');

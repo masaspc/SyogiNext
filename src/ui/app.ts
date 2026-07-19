@@ -87,6 +87,7 @@ export class App {
 
   private finishBattle(run: RunState, winner: Owner): void {
     this.run = onBattleEnd(run, winner);
+    if (this.run.lastStolen?.length) recordCodex(this.run.lastStolen);
     saveRun(this.run);
     this.showRun();
   }

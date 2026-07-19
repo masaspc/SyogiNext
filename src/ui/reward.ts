@@ -8,6 +8,22 @@ export function renderReward(root: HTMLElement, run: RunState, onTake: (defId: s
   const screen = document.createElement('section');
   screen.className = 'screen reward-screen';
   screen.innerHTML = `<div class="reward-heading"><p class="eyebrow">STAGE ${run.stage} CLEAR</p><h2>新たな駒を選ぶ</h2><p>一枚を獲得して、次の戦いへ。</p></div>`;
+  if (run.lastStolen?.length) {
+    const stolen = document.createElement('section');
+    stolen.className = 'stolen-summary';
+    stolen.innerHTML = '<h3>強奪した駒</h3>';
+    const list = document.createElement('div');
+    list.className = 'result-roster';
+    for (const id of run.lastStolen) {
+      const d = def(id);
+      const item = document.createElement('span');
+      item.className = `rarity-${d.rarity}`;
+      item.textContent = `${d.kanji} ${d.name}`;
+      list.append(item);
+    }
+    stolen.append(list);
+    screen.append(stolen);
+  }
   const cards = document.createElement('div');
   cards.className = 'reward-cards';
   for (const id of run.rewardOffer ?? []) {

@@ -76,9 +76,13 @@ function explode(s: GameState, center: number): void {
     if (done.has(c)) continue;
     done.add(c);
     s.events.push({ t: 'explode', sq: c, defId: 'bomber' });
-    for (const sq of [c, ...ADJ[c]]) {
+    const victims = [c, ...ADJ[c]].filter((sq) => {
       const v = s.board[sq];
-      if (!v || isRoyalPiece(v) || isWarded(s, sq)) continue;
+      return v && !isRoyalPiece(v) && !isWarded(s, sq);
+    });
+    for (const sq of victims) {
+      const v = s.board[sq];
+      if (!v) continue;
       const isBomb = effectiveDef(v).onCapturedEffects === 'bomb';
       removeFromBoard(s, sq, true);
       if (isBomb) queue.push(sq);
@@ -207,10 +211,11 @@ function resolveBoardMove(s: GameState, m: Extract<Move, { kind: 'move' }>): voi
     moved.promoted = true;
   }
   if (moved && captured && captured.owner !== moved.owner && effectiveDef(moved).onCaptureAoE) {
-    for (const around of ADJ[finalSq]) {
+    const victims = ADJ[finalSq].filter((around) => {
       const target = s.board[around];
-      if (target && target.owner !== moved.owner && !isRoyalPiece(target) && !isWarded(s, around)) vanish(s, around);
-    }
+      return target && target.owner !== moved!.owner && !isRoyalPiece(target) && !isWarded(s, around);
+    });
+    for (const around of victims) vanish(s, around);
   }
   const leave = moved && effectiveDef(moved).leaveBehind;
   if (moved && leave && !s.board[m.from]) {
@@ -221,10 +226,12 @@ function resolveBoardMove(s: GameState, m: Extract<Move, { kind: 'move' }>): voi
     const finalRow = rowOf(finalSq);
     const enemyBackRank = moved.owner === 'player' ? 0 : 8;
     if (finalRow === enemyBackRank) {
+      const victims: number[] = [];
       for (let targetSq = 0; targetSq < 81; targetSq++) {
         const target = s.board[targetSq];
-        if (target && target.owner !== moved.owner && !isRoyalPiece(target) && !isWarded(s, targetSq)) removeFromBoard(s, targetSq, true);
+        if (target && target.owner !== moved.owner && !isRoyalPiece(target) && !isWarded(s, targetSq)) victims.push(targetSq);
       }
+      for (const targetSq of victims) removeFromBoard(s, targetSq, true);
       s.events.push({ t: 'doomsday', sq: finalSq, defId: moved.defId });
     }
   }
@@ -260,11 +267,13 @@ function resolveActive(s: GameState, m: Extract<Move, { kind: 'active' }>): void
     }
   } else if (m.ability === 'bolt') {
     const col = colOf(m.target);
+    const victims: number[] = [];
     for (let row = 0; row < 9; row++) {
       const targetSq = sqOf(row, col);
       const target = s.board[targetSq];
-      if (target && target.owner !== p.owner && !isRoyalPiece(target) && !isWarded(s, targetSq)) vanish(s, targetSq);
+      if (target && target.owner !== p.owner && !isRoyalPiece(target) && !isWarded(s, targetSq)) victims.push(targetSq);
     }
+    for (const targetSq of victims) vanish(s, targetSq);
     s.events.push({ t: 'bolt', sq: m.target, defId: p.defId });
   } else if (m.ability === 'gale') {
     const row = rowOf(m.target);
@@ -298,26 +307,31 @@ function resolveActive(s: GameState, m: Extract<Move, { kind: 'active' }>): void
   } else if (m.ability === 'ohabari') {
     const centerRow = rowOf(m.from);
     const centerCol = colOf(m.from);
+    const victims: number[] = [];
     for (let targetSq = 0; targetSq < 81; targetSq++) {
       const target = s.board[targetSq];
       if (!target || target.owner === p.owner || isRoyalPiece(target) || isWarded(s, targetSq)) continue;
       if (Math.max(Math.abs(rowOf(targetSq) - centerRow), Math.abs(colOf(targetSq) - centerCol)) <= 2) {
-        vanish(s, targetSq);
+        victims.push(targetSq);
       }
     }
+    for (const targetSq of victims) vanish(s, targetSq);
     s.events.push({ t: 'execute', sq: m.from, defId: p.defId });
   } else if (m.ability === 'apocalypse') {
     s.events.push({ t: 'apocalypse', sq: m.from, defId: p.defId });
+    const victims: number[] = [];
     for (let targetSq = 0; targetSq < 81; targetSq++) {
       const target = s.board[targetSq];
-      if (target && !isRoyalPiece(target) && !isWarded(s, targetSq)) removeFromBoard(s, targetSq, true);
+      if (target && !isRoyalPiece(target) && !isWarded(s, targetSq)) victims.push(targetSq);
     }
+    for (const targetSq of victims) removeFromBoard(s, targetSq, true);
     s.hands = { player: {}, enemy: {} };
   } else if (m.ability === 'smite') {
-    for (const targetSq of [m.target, ...ADJ[m.target]]) {
+    const victims = [m.target, ...ADJ[m.target]].filter((targetSq) => {
       const target = s.board[targetSq];
-      if (target && !isRoyalPiece(target) && !isWarded(s, targetSq)) removeFromBoard(s, targetSq, true);
-    }
+      return target && !isRoyalPiece(target) && !isWarded(s, targetSq);
+    });
+    for (const targetSq of victims) removeFromBoard(s, targetSq, true);
     s.events.push({ t: 'smite', sq: m.target, defId: p.defId });
   }
 }

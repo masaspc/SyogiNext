@@ -23,6 +23,21 @@ export function renderResult(root: HTMLElement, run: RunState, onTitle: () => vo
     roster.append(item);
   }
   screen.append(roster);
+  if (run.lastStolen?.length) {
+    const heading = document.createElement('h3');
+    heading.textContent = '強奪した駒';
+    screen.append(heading);
+    const stolen = document.createElement('div');
+    stolen.className = 'result-roster';
+    for (const id of run.lastStolen) {
+      const d = def(id);
+      const item = document.createElement('span');
+      item.className = `rarity-${d.rarity}`;
+      item.textContent = `${d.kanji} ${d.name}`;
+      stolen.append(item);
+    }
+    screen.append(stolen);
+  }
   const button = document.createElement('button');
   button.className = 'menu-button';
   button.textContent = 'タイトルへ戻る';
