@@ -36,6 +36,7 @@ describe('ラン進行', () => {
       expect(run.roster.map((id) => def(id).rarity).sort()).toEqual(['celestial', 'mythic']);
       expect(Object.values(run.formation).sort()).toEqual([...run.roster].sort());
     }
+    expect(newRun('beginner', 123)).toEqual(newRun('beginner', 123));
   });
 
   it('出陣すると現在面の敵編成を持つ対局を作る', () => {
@@ -53,6 +54,18 @@ describe('ラン進行', () => {
     }
     expect(rewardWeightsFor(1).mythic + rewardWeightsFor(1).celestial).toBe(40);
     expect(rewardWeightsFor(14).mythic + rewardWeightsFor(14).celestial).toBe(80);
+    expect([
+      rewardWeightsFor(1), rewardWeightsFor(4), rewardWeightsFor(5), rewardWeightsFor(6),
+      rewardWeightsFor(10), rewardWeightsFor(11), rewardWeightsFor(13),
+    ]).toEqual([
+      { common: 1, uncommon: 14, rare: 45, mythic: 35, celestial: 5 },
+      { common: 1, uncommon: 9, rare: 40, mythic: 40, celestial: 10 },
+      { common: 0, uncommon: 0, rare: 30, mythic: 50, celestial: 20 },
+      { common: 1, uncommon: 7, rare: 32, mythic: 45, celestial: 15 },
+      { common: 0, uncommon: 0, rare: 20, mythic: 50, celestial: 30 },
+      { common: 1, uncommon: 4, rare: 25, mythic: 45, celestial: 25 },
+      { common: 0, uncommon: 3, rare: 17, mythic: 45, celestial: 35 },
+    ]);
   });
 
   it('報酬候補は常に重複しない3枚になる', () => {

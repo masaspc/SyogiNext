@@ -144,11 +144,15 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
   const selectSquare = (sq: number): void => {
     if (thinking || passPending || game().turn !== 'player' || variants) return;
     if (selectedDrop) {
-      const drop = legalMoves(game(), 'player').find(
-        (m): m is Extract<Move, { kind: 'drop' }> => m.kind === 'drop' && m.defId === selectedDrop && m.to === sq,
-      );
-      if (drop) apply(drop);
-      return;
+      if (game().board[sq]?.owner === 'enemy') {
+        selectedDrop = null;
+      } else {
+        const drop = legalMoves(game(), 'player').find(
+          (m): m is Extract<Move, { kind: 'drop' }> => m.kind === 'drop' && m.defId === selectedDrop && m.to === sq,
+        );
+        if (drop) apply(drop);
+        return;
+      }
     }
     const currentlySelected = selectedSq === null ? null : game().board[selectedSq];
     if (activeMode && selectedSq !== null && currentlySelected?.owner === 'player') {

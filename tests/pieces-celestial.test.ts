@@ -21,12 +21,12 @@ describe('天上レア', () => {
     const s = bare();
     put(s, sqOf(4, 4), 'amaterasu', 'player');
     put(s, sqOf(4, 5), 'gold', 'enemy');
-    put(s, sqOf(5, 5), 'king', 'enemy');
-    put(s, sqOf(6, 4), 'silver', 'enemy');
+    put(s, sqOf(3, 3), 'king', 'enemy');
+    put(s, sqOf(7, 0), 'silver', 'enemy');
     expect(pieceMoves(s, sqOf(4, 5))).toEqual([]);
     expect(isAttacked(s, sqOf(5, 5), 'enemy')).toBe(false);
-    expect(pieceMoves(s, sqOf(5, 5)).length).toBeGreaterThan(0);
-    expect(pieceMoves(s, sqOf(6, 4)).length).toBeGreaterThan(0);
+    expect(pieceMoves(s, sqOf(3, 3)).length).toBeGreaterThan(0);
+    expect(pieceMoves(s, sqOf(7, 0)).length).toBeGreaterThan(0);
   });
 
   it('天照: 麻痺中は敵の自動行動カウントも進めない', () => {
