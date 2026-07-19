@@ -19,5 +19,6 @@ export function pick<T>(state: number, items: readonly T[]): { value: T; state: 
 }
 
 export function seedFromTime(): number {
-  return (Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) | 0;
+  const now = Date.now();
+  return (now ^ Math.floor(now / 0x100000000)) | 0;
 }

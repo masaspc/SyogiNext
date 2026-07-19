@@ -1,1 +1,4 @@
-document.querySelector<HTMLDivElement>('#app')!.textContent = '将棋NEXT 開発中';
+import './style.css';
+import { App } from './ui/app';
+
+new App(document.querySelector<HTMLDivElement>('#app')!).start();
