@@ -167,7 +167,14 @@ function bossDodge(s: GameState): void {
     if (!p || p.owner !== 'enemy') continue;
     if (!effectiveDef(p).dodge) continue;
     if (!attacked(s, sq, 'player')) return;
-    const candidates = ADJ[sq].filter((a) => !s.board[a] && !attacked(s, a, 'player'));
+    const candidates = ADJ[sq].filter((a) => {
+      if (s.board[a]) return false;
+      // 元マスが空くことで飛車角などの射線が開く場合も含め、移動後の盤で安全性を判定する。
+      const board = s.board.slice();
+      board[a] = p;
+      board[sq] = null;
+      return !attacked({ ...s, board }, a, 'player');
+    });
     if (candidates.length) {
       const r = pick(s.rngState, candidates);
       s.rngState = r.state;
