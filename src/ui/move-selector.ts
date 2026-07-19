@@ -27,8 +27,9 @@ export interface SelectorStage {
   moveOptions: number[];
   activeOptions: ActiveOption[];
   skippable: boolean;
-  tentative?: { from: number; at: number };
+  tentative?: { from: number; at: number; cleared?: number[] };
   affected?: number[];
+  confirmTarget?: number;
   result?: Move;
 }
 
@@ -44,6 +45,7 @@ export interface Selector {
   skip(): TapResult;
   choosePromote(promote: boolean): TapResult;
   chooseAmbiguous(kind: 'move' | 'active'): TapResult;
+  activateSelf(target: number): TapResult;
   cancel(): void;
 }
 
@@ -111,10 +113,12 @@ export function createSelector(
     return { type: 'commit', move };
   };
 
-  const tentative = (at?: number): { from: number; at: number } | undefined => {
+  const tentative = (at?: number): { from: number; at: number; cleared?: number[] } | undefined => {
     const move = candidates[0];
     if (!move) return undefined;
-    return { from: move.from, at: at ?? move.chain ?? move.second ?? move.to };
+    const currentAt = at ?? move.chain ?? move.second ?? move.to;
+    const cleared = [move.to, ...(move.chain != null ? [move.chain] : [])].filter((sq) => sq !== currentAt);
+    return { from: move.from, at: currentAt, ...(cleared.length ? { cleared } : {}) };
   };
 
   const advance = (): TapResult => {
@@ -182,7 +186,7 @@ export function createSelector(
       confirm = { tapped, move };
       current = {
         kind: 'activeConfirm', moveOptions: [], activeOptions: [], skippable: false,
-        affected: affectedSquares(move),
+        affected: affectedSquares(move), confirmTarget: move.target,
       };
       return { type: 'stage' };
     }
@@ -191,7 +195,7 @@ export function createSelector(
 
   const matchingActives = (sq: number): Extract<Move, { kind: 'active' }>[] => all
     .filter((move): move is Extract<Move, { kind: 'active' }> => move.kind === 'active')
-    .filter((move) => move.target === sq || lineWash(move)?.includes(sq));
+    .filter((move) => (move.target !== move.from && move.target === sq) || lineWash(move)?.includes(sq));
 
   const reset = (): void => {
     candidates = [];
@@ -288,6 +292,13 @@ export function createSelector(
       if (kind === 'active') return chooseActive(pending.actives[0], pending.sq);
       candidates = pending.moves;
       return advance();
+    },
+    activateSelf(target: number): TapResult {
+      if (current.kind !== 'destination') return { type: 'invalid' };
+      const move = all.find((candidate): candidate is Extract<Move, { kind: 'active' }> => candidate.kind === 'active'
+        && candidate.target === target
+        && candidate.target === candidate.from);
+      return move ? chooseActive(move, target) : { type: 'invalid' };
     },
     cancel: reset,
   };

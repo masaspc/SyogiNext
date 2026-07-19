@@ -27,6 +27,7 @@ describe('輪廻', () => {
     expect(destinations).toContain(sqOf(4, 0));
     expect(destinations).toContain(sqOf(0, 8));
     expect(destinations).not.toContain(from);
+    expect(pieceMoves(s, from).filter((move) => move.kind === 'move')).toHaveLength(16);
   });
 
   it('反対側へ抜けた後も途中の敵で捕獲停止する', () => {
@@ -135,6 +136,17 @@ describe('後の先', () => {
     const next = applyMove(s, { kind: 'pass' });
     expect(next.board[sqOf(4, 4)]?.defId).toBe('gonosen');
     expect(next.board[sqOf(4, 5)]?.defId).toBe('rook');
+  });
+
+  it('爆弾兵を反撃捕獲すると爆発に巻き込まれる', () => {
+    const s = bare();
+    put(s, sqOf(4, 4), 'gonosen', 'enemy');
+    put(s, sqOf(4, 5), 'bomber', 'player');
+    const next = applyMove(s, { kind: 'pass' });
+    expect(next.board[sqOf(4, 4)]).toBeNull();
+    expect(next.board[sqOf(4, 5)]).toBeNull();
+    expect(next.events.some((event) => event.t === 'explode')).toBe(true);
+    expect(next.events.some((event) => event.t === 'counter')).toBe(true);
   });
 });
 

@@ -92,6 +92,7 @@ export function startBattle(run: RunState): RunState {
 }
 
 export function onBattleEnd(run: RunState, winner: Owner): RunState {
+  if (run.phase !== 'battle') return run;
   const state = run.game?.rngState ?? run.rngState;
   if (winner === 'enemy') return { ...run, phase: 'gameover', rngState: state, rewardOffer: null, lastStolen: [] };
   const stolen = run.game?.stolen ?? [];

@@ -101,6 +101,14 @@ describe('ラン進行', () => {
     expect(lost.phase).toBe('gameover');
   });
 
+  it('対局終了処理を完了済みランへ再適用しても報酬を二重計上しない', () => {
+    const battle = startBattle({ ...newRun('normal', 4), roster: ['shuten'] });
+    battle.game!.stolen = ['lion'];
+    const ended = onBattleEnd(battle, 'player');
+    expect(onBattleEnd(ended, 'player')).toEqual(ended);
+    expect(ended.roster.filter((id) => id === 'lion')).toHaveLength(1);
+  });
+
   it('編成は玉以外の初期マスと所持数を検証する', () => {
     const run = { ...newRun('normal', 1), roster: ['magnet'] };
     expect(() => setFormation(run, sqOf(8, 4), 'magnet')).toThrow(/invalid formation square/);

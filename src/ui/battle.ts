@@ -1,10 +1,11 @@
 import { findBestMove } from '../ai/search';
 import { applyMove } from '../core/apply';
-import { findRoyals } from '../core/board';
+import { ADJ, findRoyals } from '../core/board';
 import { def, effectiveDef } from '../core/defs';
 import { isAttacked, legalMoves, pieceMoves } from '../core/movegen';
 import { stageDef } from '../core/stages';
 import type { GameEvent, GameState, Move, Owner, RunState } from '../core/types';
+import { colOf, onBoard, rowOf, sqOf } from '../core/types';
 import { renderBoard, renderChips, renderHand, type BoardChip } from './board-view';
 import { createMoveVisual, type MoveVisual } from './move-visuals';
 import { moveDiagram } from './piece-view';
@@ -48,6 +49,32 @@ function cutinsFor(move: Move, events: GameEvent[]): string[] {
     if (call) calls.push(call);
   }
   return [...new Set(calls)];
+}
+
+export function activeEffectSquares(move: Extract<Move, { kind: 'active' }>): number[] {
+  if (move.ability === 'bolt') return Array.from({ length: 9 }, (_, row) => sqOf(row, colOf(move.target)));
+  if (move.ability === 'gale') return Array.from({ length: 9 }, (_, col) => sqOf(rowOf(move.target), col));
+  if (move.ability === 'smite') return [move.target, ...ADJ[move.target]];
+  if (move.ability === 'ohabari') return Array.from({ length: 81 }, (_, sq) => sq).filter((sq) => (
+    Math.max(Math.abs(rowOf(sq) - rowOf(move.from)), Math.abs(colOf(sq) - colOf(move.from))) <= 2
+  ));
+  if (move.ability === 'apocalypse' || move.ability === 'boardFlip' || move.ability === 'timestop') {
+    return Array.from({ length: 81 }, (_, sq) => sq);
+  }
+  if (move.ability === 'shockwave') {
+    const dr = Math.sign(rowOf(move.target) - rowOf(move.from));
+    const dc = Math.sign(colOf(move.target) - colOf(move.from));
+    const ray: number[] = [];
+    let row = rowOf(move.from) + dr;
+    let col = colOf(move.from) + dc;
+    while (onBoard(row, col)) {
+      ray.push(sqOf(row, col));
+      row += dr;
+      col += dc;
+    }
+    return ray;
+  }
+  return [move.target];
 }
 
 export function renderBattle(root: HTMLElement, initialRun: RunState, actions: BattleActions): () => void {
@@ -238,6 +265,7 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
     } catch {
       foresightWorker = null;
       foresightThinking = false;
+      if (!disposed) render();
     }
   };
 
@@ -351,6 +379,7 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
       secondary,
       effects,
       blast,
+      blastCenter: selectorStage?.confirmTarget,
       captures,
       tentative: selectorStage?.tentative,
       foresightOrigin,
@@ -360,7 +389,9 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
       lastChanged: lastMove?.changed,
       inspectionDestinations: inspectingEnemy ? destinations : undefined,
       inspectionTargets: inspectingEnemy
-        ? new Set(moves.filter((m) => m.kind === 'active').map((m) => (m as Extract<Move, { kind: 'active' }>).target))
+        ? new Set(moves
+          .filter((m): m is Extract<Move, { kind: 'active' }> => m.kind === 'active')
+          .flatMap(activeEffectSquares))
         : undefined,
       disabled: thinking || passPending,
       onSquare: selectSquare,
@@ -396,7 +427,7 @@ export function renderBattle(root: HTMLElement, initialRun: RunState, actions: B
           addChips(selectedSq, selfActives.map((active) => ({
             label: active.label,
             style: 'ability' as const,
-            onTap: () => handleTapResult(selector!.tap(active.target), active.target),
+            onTap: () => handleTapResult(selector!.activateSelf(active.target), active.target),
           })));
         }
       } else if (selectorStage.skippable) {

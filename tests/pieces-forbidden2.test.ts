@@ -96,6 +96,39 @@ describe('酒呑童子と修羅', () => {
     expect(next.board[second]).toBeNull();
     expect(next.board[third]?.defId).toBe('gold');
   });
+
+  it('修羅の2回目が非捕獲なら3回目の選択を生成しない', () => {
+    const s = bare();
+    const from = sqOf(4, 4);
+    const first = sqOf(3, 3);
+    const quiet = sqOf(2, 2);
+    put(s, from, 'shura', 'player');
+    put(s, first, 'pawn', 'enemy');
+    const moves = pieceMoves(s, from).filter((move) => move.kind === 'move' && move.to === first && move.chain === quiet);
+    expect(moves).toHaveLength(1);
+    expect(moves[0]).not.toHaveProperty('chain2');
+  });
+
+  it('修羅は王を捕獲した段階で追撃を終了する', () => {
+    const from = sqOf(4, 4);
+    const royal = sqOf(3, 3);
+    const primary = bare();
+    put(primary, from, 'shura', 'player');
+    put(primary, royal, 'king', 'enemy');
+    const primaryMoves = pieceMoves(primary, from).filter((move) => move.kind === 'move' && move.to === royal);
+    expect(primaryMoves).toHaveLength(1);
+    expect(primaryMoves[0]).not.toHaveProperty('chain');
+
+    const chained = bare();
+    const first = sqOf(3, 3);
+    const second = sqOf(2, 2);
+    put(chained, from, 'shura', 'player');
+    put(chained, first, 'pawn', 'enemy');
+    put(chained, second, 'king', 'enemy');
+    const royalChain = pieceMoves(chained, from).find((move) => move.kind === 'move'
+      && move.to === first && move.chain === second)!;
+    expect(royalChain).not.toHaveProperty('chain2');
+  });
 });
 
 describe('産土神・絡新婦・常世神', () => {
@@ -152,5 +185,22 @@ describe('産土神・絡新婦・常世神', () => {
     put(without, raijin, 'raijin', 'player', { usesLeft: 0 });
     put(without, sqOf(0, 0), 'gold', 'enemy');
     expect(pieceMoves(without, raijin).some((m) => m.kind === 'active')).toBe(false);
+  });
+
+  it('常世神が盤上から消えると、次の能力から残数を消費する', () => {
+    const s = bare();
+    const caster = sqOf(8, 8);
+    const tokoyo = sqOf(8, 7);
+    put(s, caster, 'tenbatsu', 'player');
+    put(s, tokoyo, 'tokoyo', 'player');
+    put(s, sqOf(4, 4), 'gold', 'enemy');
+    let next = applyMove(s, activeAt(s, caster, 'smite', sqOf(4, 4)));
+    expect(next.board[caster]?.usesLeft).toBe(2);
+
+    next.board[tokoyo] = null;
+    next.turn = 'player';
+    put(next, sqOf(0, 0), 'silver', 'enemy');
+    next = applyMove(next, activeAt(next, caster, 'smite', sqOf(0, 0)));
+    expect(next.board[caster]?.usesLeft).toBe(1);
   });
 });

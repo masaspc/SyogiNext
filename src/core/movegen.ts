@@ -139,6 +139,10 @@ function pushMoveVariants(state: GameState, moves: Move[], p: Piece, d: PieceDef
   const captured = state.board[to];
   const baseMove: Move = { kind: 'move', from, to, promote };
   if (d.chainOnCapture && captured) {
+    if (isRoyalPiece(captured)) {
+      moves.push(baseMove);
+      return;
+    }
     moves.push({ ...baseMove, chain: null });
     const chainLimit = d.chainOnCapture === true ? 1 : d.chainOnCapture;
     const canPay = !d.chainCostsHand || DROPPABLE.some((id) => (state.hands[p.owner][id] ?? 0) > 0);
@@ -147,8 +151,9 @@ function pushMoveVariants(state: GameState, moves: Move[], p: Piece, d: PieceDef
       for (const { to: c, isJump } of destsBasic(after, to, p, d)) {
         const occ2 = after.board[c];
         if (occ2 && !captureAllowed(after, p, to, c, isJump)) continue;
-        moves.push({ ...baseMove, chain: c, ...(chainLimit >= 2 ? { chain2: null } : {}) });
-        if (chainLimit < 2 || !occ2 || occ2.owner === p.owner) continue;
+        const capturedOnChain = !!occ2 && occ2.owner !== p.owner && !isRoyalPiece(occ2);
+        moves.push({ ...baseMove, chain: c, ...(chainLimit >= 2 && capturedOnChain ? { chain2: null } : {}) });
+        if (chainLimit < 2 || !capturedOnChain) continue;
         const after2 = simulateMove(after, to, c);
         for (const { to: c2, isJump: jump2 } of destsBasic(after2, c, p, d)) {
           const occ3 = after2.board[c2];
@@ -383,7 +388,7 @@ export function pieceMoves(state: GameState, sq: number): Move[] {
     }
   }
   genActive(state, sq, p, d, moves);
-  return moves;
+  return [...new Map(moves.map((move) => [JSON.stringify(move), move])).values()];
 }
 
 function hasOwnPawnInCol(state: GameState, owner: Owner, col: number): boolean {

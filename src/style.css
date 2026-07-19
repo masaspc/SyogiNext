@@ -163,6 +163,9 @@ h2 { margin: 0; font-size: clamp(34px, 5vw, 58px); }
 .board-square.effect-target::after { background: #2e9b59dd; }
 .board-square.ability-wash { background: linear-gradient(135deg, #bf8ae4cc, #7c43b4cc); }
 .board-square.blast-preview { background: linear-gradient(135deg, #ef7c5dcc, #a92835dd); box-shadow: inset 0 0 0 3px #ffcf9a; }
+.board-square.blast-center { z-index: 3; box-shadow: inset 0 0 0 5px #fff2a1, inset 0 0 25px #ffeb72; animation: blast-center-pulse .65s ease-in-out infinite alternate; }
+.board-square.blast-center::before { content: '爆心'; position: absolute; z-index: 8; top: 2px; left: 2px; padding: 2px 4px; color: #391006; background: #fff0a8; font: 900 9px/1 system-ui, sans-serif; }
+@keyframes blast-center-pulse { to { filter: brightness(1.3); } }
 .board-square.capture-target { box-shadow: inset 0 0 0 4px #b5232d, inset 0 0 16px #ff334f99; }
 .board-square.foresight-origin { outline: 3px dashed #8eeaff; outline-offset: -5px; }
 .board-square.foresight-destination { box-shadow: inset 0 0 0 4px #63e6ff, inset 0 0 22px #8cefffbb; }
@@ -172,6 +175,8 @@ h2 { margin: 0; font-size: clamp(34px, 5vw, 58px); }
 .board-square.tentative-square { box-shadow: inset 0 0 0 4px #35c5e7, inset 0 0 18px #83efff99; z-index: 2; }
 .board-chip-tray { position: absolute; z-index: 20; left: 50%; bottom: 62%; display: flex; gap: 5px; transform: translateX(-50%); filter: none; }
 .board-square:nth-child(-n+9) .board-chip-tray { top: 62%; bottom: auto; }
+.board-square:nth-child(9n+1) .board-chip-tray { left: 0; transform: none; }
+.board-square:nth-child(9n) .board-chip-tray { right: 0; left: auto; transform: none; }
 .board-chip { min-width: 44px; min-height: 44px; padding: 7px 10px; border: 2px solid #fff4cc; border-radius: 10px; color: #fff; background: #322716f2; font: 900 13px/1 system-ui, sans-serif; white-space: nowrap; box-shadow: 0 6px 18px #000a; cursor: pointer; animation: chip-pop .12s ease-out both; }
 .board-chip.chip-promote { color: #2c1706; background: #ffd97b; border-color: #fff8d3; }
 .board-chip.chip-ability { background: #6d2e9e; border-color: #e4b9ff; }
@@ -252,7 +257,8 @@ h2 { margin: 0; font-size: clamp(34px, 5vw, 58px); }
   .screen { padding: 28px 16px; }
   .codex-layout { grid-template-columns: 1fr; }
   .codex-detail { position: static; order: -1; min-height: 220px; }
-  .battle-layout { grid-template-columns: 1fr; }
+  .battle-layout { grid-template-columns: 1fr; overflow-x: auto; }
+  .shogi-board { min-width: 396px; }
   .battle-side { min-height: 0; }
   .formation-layout { grid-template-columns: 1fr; }
   .reward-cards { grid-template-columns: 1fr; }

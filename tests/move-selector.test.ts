@@ -67,6 +67,7 @@ describe('move selector', () => {
     expect(multi.stage().kind).toBe('chain');
     multi.tap(second);
     expect(multi.stage()).toMatchObject({ kind: 'chain2', skippable: true });
+    expect(multi.stage().tentative?.cleared).toContain(captured);
     expect(multi.tap(sqOf(1, 1))).toMatchObject({ type: 'commit', move: { chain: second, chain2: sqOf(1, 1) } });
   });
 
@@ -91,6 +92,24 @@ describe('move selector', () => {
     expect(stone.skip()).toMatchObject({ type: 'commit', move: { petrify: null } });
   });
 
+  it('軍師は移動後に連携する味方とその移動先を順に選べる', () => {
+    const s = bare();
+    const from = sqOf(4, 4);
+    const to = sqOf(3, 4);
+    const ally = sqOf(3, 3);
+    const escortTo = sqOf(2, 3);
+    put(s, from, 'gunshi', 'player');
+    put(s, ally, 'gold', 'player');
+    const selector = selectorFor(s, from);
+    expect(selector.tap(to)).toEqual({ type: 'stage' });
+    expect(selector.stage()).toMatchObject({ kind: 'escortPiece', skippable: true });
+    expect(selector.tap(ally)).toEqual({ type: 'stage' });
+    expect(selector.stage()).toMatchObject({ kind: 'escortTo', skippable: false });
+    expect(selector.tap(escortTo)).toMatchObject({
+      type: 'commit', move: { to, escort: { from: ally, to: escortTo } },
+    });
+  });
+
   it('能力対象と自己対象能力を最初から直接選べる', () => {
     const sniper = bare();
     const from = sqOf(4, 4);
@@ -106,7 +125,9 @@ describe('move selector', () => {
     put(time, sqOf(0, 0), 'gold', 'enemy');
     const stop = selectorFor(time, from);
     expect(stop.stage().activeOptions).toContainEqual(expect.objectContaining({ target: from, selfTarget: true, label: '刻停' }));
-    expect(stop.tap(from)).toMatchObject({ type: 'commit', move: { ability: 'timestop' } });
+    expect(stop.tap(from)).toEqual({ type: 'invalid' });
+    const chip = selectorFor(time, from);
+    expect(chip.activateSelf(from)).toMatchObject({ type: 'commit', move: { ability: 'timestop' } });
   });
 
   it('落雷は同じ列のどのマスをタップしても発動する', () => {
@@ -130,6 +151,7 @@ describe('move selector', () => {
     expect(selector.tap(target)).toEqual({ type: 'stage' });
     expect(selector.stage()).toMatchObject({ kind: 'activeConfirm' });
     expect(selector.stage().affected).toHaveLength(9);
+    expect(selector.stage().confirmTarget).toBe(target);
     expect(selector.tap(target)).toMatchObject({ type: 'commit', move: { ability: 'smite', target } });
 
     const canceled = selectorFor(s, from);

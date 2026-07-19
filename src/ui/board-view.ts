@@ -13,7 +13,8 @@ export interface BoardViewOptions {
   wash?: ReadonlySet<number>;
   blast?: ReadonlySet<number>;
   captures?: ReadonlySet<number>;
-  tentative?: { from: number; at: number };
+  tentative?: { from: number; at: number; cleared?: number[] };
+  blastCenter?: number | null;
   foresightOrigin?: number | null;
   foresightDestination?: number | null;
   lastOrigin?: number | null;
@@ -46,6 +47,7 @@ export function renderBoard(container: HTMLElement, state: GameState, options: B
     if (options.effects?.has(sq)) cell.classList.add('effect-target');
     if (options.wash?.has(sq)) cell.classList.add('ability-wash');
     if (options.blast?.has(sq)) cell.classList.add('blast-preview');
+    if (options.blastCenter === sq) cell.classList.add('blast-center');
     if (options.captures?.has(sq)) cell.classList.add('capture-target');
     if (options.foresightOrigin === sq) cell.classList.add('foresight-origin');
     if (options.foresightDestination === sq) cell.classList.add('foresight-destination');
@@ -59,7 +61,7 @@ export function renderBoard(container: HTMLElement, state: GameState, options: B
       token.classList.add('tentative-piece');
       cell.classList.add('tentative-square');
       cell.append(token);
-    } else if (piece) {
+    } else if (piece && !options.tentative?.cleared?.includes(sq)) {
       const token = pieceToken(piece);
       if (options.tentative && sq === options.tentative.from) token.classList.add('piece-ghost');
       cell.append(token);
