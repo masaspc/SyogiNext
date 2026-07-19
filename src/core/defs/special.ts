@@ -68,7 +68,17 @@ const RARES: PieceDef[] = [
   { id: 'witch', name: '石化の魔女', kanji: '魔', rarity: 'rare', aiValue: 900, moves: [{ type: 'slide', dirs: DIAG, max: 2 }], afterMoveChoice: 'petrify', desc: '斜めに2マスまで動ける。移動後、隣接する敵駒1体を相手の次の手番の間、行動不能にできる。' },
 ];
 
-export const SPECIAL_DEFS: PieceDef[] = [...COMMONS, ...UNCOMMONS, ...RARES];
+// ===== 神話レア(§6.4) =====
+// lion / honno は麒麟・鳳凰の成り先であると同時に、報酬から直接獲得できる。
+const MYTHICS: PieceDef[] = [
+  { id: 'lion', name: '獅子', kanji: '獅', rarity: 'mythic', aiValue: 1600, moves: [{ type: 'lion' }], demotesTo: 'kirin', desc: '8方向に1マスずつ、1手番に2回まで動ける。1回で停止したり、元のマスへ戻る居食いもできる。' },
+  { id: 'honno', name: '奔王', kanji: '奔', rarity: 'mythic', aiValue: 1500, moves: [{ type: 'slide', dirs: ALL8 }], demotesTo: 'phoenix', desc: '全8方向に何マスでも動ける。' },
+  { id: 'phoenix_b', name: '不死鳥', kanji: '不死', rarity: 'mythic', aiValue: 1400, moves: [{ type: 'slide', dirs: DIAG }, { type: 'step', dirs: ORTH }], onCapturedEffects: 'phoenixRevive', desc: '斜めに何マスでも、縦横に1マス動ける。取られたとき1度だけ、自陣のランダムな空きマスへ復活する。' },
+  { id: 'gunshin', name: '軍神', kanji: '軍', rarity: 'mythic', aiValue: 1300, moves: [{ type: 'step', dirs: ALL8 }], aura: 'guardian', desc: '8方向に1マス動ける。隣接する味方の非ロイヤル駒を敵の捕獲から守る。' },
+  { id: 'kugutsushi', name: '傀儡師', kanji: '傀', rarity: 'mythic', aiValue: 1200, moves: [{ type: 'slide', dirs: ORTH, max: 2 }], active: { kind: 'convert', uses: 1 }, desc: '縦横に2マスまで動ける。1ゲーム1回、隣接する敵の通常駒を自軍に寝返らせる。' },
+];
+
+export const SPECIAL_DEFS: PieceDef[] = [...COMMONS, ...UNCOMMONS, ...RARES, ...MYTHICS];
 
 // UI用: プレイヤーが獲得できる駒(成り形は除く)
 export function obtainableIds(): string[] {
