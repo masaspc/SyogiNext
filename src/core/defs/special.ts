@@ -31,7 +31,31 @@ const COMMONS: PieceDef[] = [
   { id: 'kihei', name: '旗兵', kanji: '旗', rarity: 'common', aiValue: 320, moves: [{ type: 'step', dirs: [F, L, R] }], promotesTo: 'gold', desc: '前と横に1マス動ける。' },
 ];
 
-export const SPECIAL_DEFS: PieceDef[] = [...COMMONS];
+// ===== アンコモン(§6.2) =====
+const UNCOMMONS: PieceDef[] = [
+  { id: 'leopard', name: '猛豹', kanji: '豹', rarity: 'uncommon', aiValue: 600, moves: [{ type: 'step', dirs: [F, B, FL, FR, BL, BR] }], promotesTo: 'bishop', desc: '前後と斜めに1マス動ける。成ると角行になる。' },
+  { id: 'windmill', name: '風車', kanji: '風', rarity: 'uncommon', aiValue: 650, moves: [{ type: 'slide', dirs: [L, R] }, { type: 'step', dirs: [F, B] }], promotesTo: 'rook', desc: '横に何マスでも、前後に1マス動ける。成ると飛車になる。' },
+  { id: 'knight8', name: '八方桂', kanji: '八', rarity: 'uncommon', aiValue: 620, moves: [{ type: 'jump', offsets: [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]] }], promotesTo: 'gold', desc: '桂馬の動きを8方向に跳べる(駒を飛び越せる)。' },
+  { id: 'spearman', name: '槍兵', kanji: '槍', rarity: 'uncommon', aiValue: 520, moves: [{ type: 'slide', dirs: [F], max: 2 }, { type: 'step', dirs: [L, R] }], promotesTo: 'longspear', desc: '前に2マスまで、横に1マス動ける。成ると長槍になる。' },
+  { id: 'longspear', name: '長槍', kanji: '長槍', aiValue: 650, moves: [{ type: 'slide', dirs: [F], max: 3 }, { type: 'step', dirs: [L, R, FL, FR] }], demotesTo: 'spearman', desc: '前に3マスまで、横・斜め前に1マス動ける。' },
+  {
+    id: 'shieldman', name: '盾兵', kanji: '盾', rarity: 'uncommon', aiValue: 500,
+    moves: [{ type: 'step', dirs: ORTH }], promotesTo: 'gold',
+    desc: '縦横に1マス動ける。正面からの直進では取られない。',
+    blockCapture: (_a, _aDef, info, target) => {
+      const fRow = Math.floor(info.from / 9);
+      const tRow = Math.floor(info.to / 9);
+      const fwd = target.owner === 'player' ? -1 : 1;
+      return !info.isJump && info.from % 9 === info.to % 9 && Math.sign(fRow - tRow) === fwd;
+    },
+  },
+  { id: 'grudge', name: '怨念', kanji: '怨', rarity: 'uncommon', aiValue: 560, moves: [{ type: 'step', dirs: DIAG }], onCapturedEffects: 'grudge', desc: '斜めに1マス動ける。取られたとき、取った駒も道連れにして消滅させる(王・ボスを除く)。' },
+  { id: 'ninja', name: '隠密', kanji: '忍', rarity: 'uncommon', aiValue: 540, moves: [{ type: 'step', dirs: [F, FL, FR, BL, BR] }], promotesTo: 'gold', active: { kind: 'warp', uses: 1 }, desc: '前と斜めに1マス動ける。1ゲーム1回、自陣の空きマスへワープできる。' },
+  { id: 'fox', name: '妖狐', kanji: '狐', rarity: 'uncommon', aiValue: 560, moves: [{ type: 'slide', dirs: DIAG, max: 2 }], promotesTo: 'gold', onCapturedEffects: 'foxRevert', desc: '斜めに2マスまで動ける。取られても消滅せず、自分の駒台に歩として戻る。' },
+  { id: 'kagemusha', name: '影武者', kanji: '影', rarity: 'uncommon', aiValue: 600, moves: [{ type: 'step', dirs: ALL8 }], active: { kind: 'kingSwap', uses: 1 }, desc: '玉と同じく8方向に1マス動ける。1ゲーム1回、味方の王と位置を入れ替えられる。' },
+];
+
+export const SPECIAL_DEFS: PieceDef[] = [...COMMONS, ...UNCOMMONS];
 
 // UI用: プレイヤーが獲得できる駒(成り形は除く)
 export function obtainableIds(): string[] {
